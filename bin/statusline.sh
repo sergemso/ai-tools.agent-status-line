@@ -167,7 +167,7 @@ else
   bar="${DIM}(no context data)${RESET}"; bar_s=$bar
 fi
 
-# Prompt cache: "⏱25m" time left (minutes; green/yellow/red), "⏱ cold" once expired. The hit rate
+# Prompt cache: "cache 25m" time left (minutes; green/yellow/red), "cache cold" once expired. The hit rate
 # is added only when below 80% (red), or always when the "stats" section is enabled.
 cache=""; cache_s=""; cache_cold=""
 ttl=$(echo "$input" | jq -r '.prompt_cache.ttl // empty')
@@ -189,10 +189,10 @@ if [ -n "$ttl" ]; then
       [ "$rem" -lt $(( CACHE_CRIT * 60 )) ] && ccolor=$RED
       [ "$rem" -ge 60 ] && rem=$(( rem / 60 * 60 ))     # whole minutes, no seconds
       ctime=$(fmt_dur "$rem"); ctime=${ctime% 0s}; ctime=${ctime// /}
-      cache="${DIM}⏱${RESET}${ccolor}${ctime}${RESET}"
+      cache="${DIM}cache${RESET} ${ccolor}${ctime}${RESET}"
     fi
   fi
-  [ -z "$cache" ] && { cache="${RED}⏱ cold${RESET}"; cache_cold=1; }
+  [ -z "$cache" ] && { cache="${RED}cache cold${RESET}"; cache_cold=1; }
   cache_s=$cache                 # no hit rate
   cache="${cache}${stats}"
 fi
