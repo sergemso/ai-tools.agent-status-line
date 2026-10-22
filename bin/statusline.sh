@@ -85,7 +85,11 @@ mult=$(jq -r --arg m "$model_name" --arg b "$BASE_MODEL" --argjson fast "$fast" 
          | (if $fast and .fast_in then .fast_in else .in end) / $base
          | . * 10 | round / 10
     end' "$PRICES" 2>/dev/null)
-[ -n "$mult" ] && model="$model_name (x$(printf '%.1f' "$mult"))"
+# multiplier only when it differs from the base model: "Opus 5 x1.7"; trailing .0 dropped ("x2")
+if [ -n "$mult" ]; then
+  m1=$(printf '%.1f' "$mult")
+  [ "$m1" != "1.0" ] && model="$model_name x${m1%.0}"
+fi
 used=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 # Context window size -> "200k" / "1M"
 csize=$(echo "$input" | jq -r '.context_window.context_window_size // empty')
@@ -106,15 +110,16 @@ GREEN=$'\033[32m'
 YELLOW=$'\033[33m'
 RED=$'\033[31m'
 
-# Effort level (Claude Code input .effort.level) as text: low dim, medium green, high yellow, xhigh/max red
+# Effort level (Claude Code input .effort.level), abbreviated: lo dim, med green, hi yellow, xhi/max red
 effort=""
 case $effort_level in
-  low)          effort="${DIM}low${RESET}" ;;
-  medium)       effort="${GREEN}medium${RESET}" ;;
-  high)         effort="${YELLOW}high${RESET}" ;;
-  xhigh|max)    effort="${RED}${effort_level}${RESET}" ;;
-  ''|-)         ;;
-  *)            effort="${DIM}${effort_level}${RESET}" ;;
+  low)    effort="${DIM}lo${RESET}" ;;
+  medium) effort="${GREEN}med${RESET}" ;;
+  high)   effort="${YELLOW}hi${RESET}" ;;
+  xhigh)  effort="${RED}xhi${RESET}" ;;
+  max)    effort="${RED}max${RESET}" ;;
+  ''|-)   ;;
+  *)      effort="${DIM}${effort_level}${RESET}" ;;
 esac
 
 # Session usage: tokens (input+output so far) and cost; "-" = not sent
