@@ -13,15 +13,15 @@ The same in plain text:
 ```text
          10        20        30        40        50        60        70        80        90       100       110       120
 123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
-Sonnet 5.5 (x1.0) high | ▕▄▏ 42% (200k) | 245k tok | $5.60 | cache 24m 58s 90% | 12% 4h 59m / 5h | 55% 6d 23h / 7d
-└─────────1──────────┘   └─────2──────┘   └──────3───────┘   └───────4───────┘   └──────5──────┘   └──────6──────┘
+Sonnet 5.5 (x1.0) high | ▕▄▏ 42% (200k) | $5.60 session | cache 24m 58s 90% | 12% 4h 59m / 5h | 55% 6d 23h / 7d
+└─────────1──────────┘   └─────2──────┘   └─────3─────┘   └───────4───────┘   └──────5──────┘   └──────6──────┘
 ```
 
 | # | Section | Shows | Colors |
 |---|---|---|---|
 | 1 | **Model** | Active model. `(x1.0)` is its input price relative to your base model (default Sonnet 5.5; change it with `/statusline-model`). Fast mode is priced in. The effort level (`low`, `medium`, `high`, `xhigh`, `max`) follows when Claude Code sends it. | model cyan<br>effort: dim low · 🟩 medium · 🟨 high · 🟥 xhigh/max |
 | 2 | **Context** | 3-char bordered indicator (`▕▁▏`–`▕█▏`), percent used, window size. | 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80% |
-| 3 | **Session usage** | Tokens so far (input + output, e.g. `245k tok`) and cost in USD, as Claude Code reports them. Sections `tokens` and `cost`. | plain, dim `tok` |
+| 3 | **Session cost** | Cost in USD of the current session (resets with a new session), as Claude Code reports it. Optional `tokens` section (off by default: it mirrors the context %). | plain, dim `session` |
 | 4 | **Prompt cache** | Time until the cache expires, then its hit rate. `no cache` when it has expired. | time: 🟩 · 🟨 < 20 min · 🟥 < 5 min<br>hit rate: 🟩 ≥ 80% · 🟥 < 80% |
 | 5 | **5-hour window** | `<used %> <time to reset> / <window length>` | 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80% |
 | 6 | **7-day window** | Same format. A gateway spend limit looks the same, e.g. `81% 21d 23h / 30d`. | as above |
@@ -100,12 +100,12 @@ On every refresh the script reads the terminal width (`stty size </dev/tty`) and
 
 | Level | Dropped, cumulatively | Example (default windows) |
 |---|---|---|
-| 0 | nothing | `Sonnet 5.5 (x1.0) high \| ▕▄▏ 42% (200k) \| 245k tok \| $5.60 \| cache 24m 58s 90% \| 12% 4h 59m / 5h \| 55% 6d 23h / 7d` |
-| 1 | context window size, named extra windows, custom reset | `… \| ▕▄▏ 42% \| 245k tok \| $5.60 \| …` |
+| 0 | nothing | `Sonnet 5.5 (x1.0) high \| ▕▄▏ 42% (200k) \| $5.60 session \| cache 24m 58s 90% \| 12% 4h 59m / 5h \| 55% 6d 23h / 7d` |
+| 1 | context window size, named extra windows, custom reset | `… \| ▕▄▏ 42% \| $5.60 session \| …` |
 | 2 | cache hit rate | `… \| cache 24m 57s \| 12% 4h 59m / 5h \| …` |
-| 3 | `/ total` on windows, cost | `… \| 245k tok \| cache 24m 57s \| 12% 4h 59m \| 55% 6d 22h` |
-| 4 | price multiplier, effort level, windows after the first | `Sonnet 5.5 \| ▕▄▏ 42% \| 245k tok \| cache 24m 56s \| 12% 4h 59m` |
-| 5 | cache, tokens | `Sonnet 5.5 \| ▕▄▏ 42% \| 12% 4h 59m` |
+| 3 | `/ total` on windows, session cost | `… \| cache 24m 57s \| 12% 4h 59m \| 55% 6d 22h` |
+| 4 | price multiplier, effort level, windows after the first | `Sonnet 5.5 \| ▕▄▏ 42% \| cache 24m 56s \| 12% 4h 59m` |
+| 5 | cache, tokens (if enabled) | `Sonnet 5.5 \| ▕▄▏ 42% \| 12% 4h 59m` |
 | 6 | reset windows | `Sonnet 5.5 \| ▕▄▏ 42%` |
 
 If the width can't be read (no tty), nothing is dropped; set it by hand with `config.sh width 100`. If `/dev/tty` isn't available to the script it uses the tty of the nearest parent process that has one. To see what it detected, run `config.sh dump /tmp/sl.txt` (or set `STATUSLINE_DUMP`): each run writes the raw JSON there, then a line `cols=… margin=… level=… visible=…`; `config.sh dump off` stops it.

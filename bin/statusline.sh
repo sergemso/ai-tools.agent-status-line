@@ -38,7 +38,7 @@ setting() { local e="STATUSLINE_$1" f="cf_$1"; echo "${!e:-${!f:-$2}}"; }
 # num KEY DEFAULT -> setting, or DEFAULT if not a non-negative integer
 num() { local v; v=$(setting "$1" "$2"); case $v in ''|*[!0-9]*) v=$2 ;; esac; echo "$v"; }
 BASE_MODEL=$(setting BASE_MODEL "Claude Sonnet 5.5")
-SECTIONS=$(setting SECTIONS "model,context,tokens,cost,cache,stats,resets")
+SECTIONS=$(setting SECTIONS "model,context,cost,cache,stats,resets")   # tokens: opt-in (same as context %)
 PRICES_TTL=$(num PRICES_TTL 3600)
 CONTEXT_WARN=$(num CONTEXT_WARN 50); CONTEXT_CRIT=$(num CONTEXT_CRIT 80)   # context used, %
 CACHE_WARN=$(num CACHE_WARN 20);     CACHE_CRIT=$(num CACHE_CRIT 5)        # cache time left, minutes
@@ -126,7 +126,7 @@ tokens=""; cost=""
 if [ "$tok_in" != - ] && [ "$tok_out" != - ]; then
   tokens="$(fmt_tok $(( tok_in + tok_out ))) ${DIM}tok${RESET}"
 fi
-[ "$cost_usd" != - ] && cost=$(LC_ALL=C printf '$%.2f' "$cost_usd")
+[ "$cost_usd" != - ] && cost="$(LC_ALL=C printf '$%.2f' "$cost_usd") ${DIM}session${RESET}"
 
 # Context usage: 3-char indicator (border + fill + border)
 ctx_fill=""

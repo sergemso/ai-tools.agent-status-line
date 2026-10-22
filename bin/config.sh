@@ -81,7 +81,7 @@ save_sections() {
 cmd_show() {
   local k def v src
   printf '%-14s %-38s %s\n' setting value source
-  for pair in "BASE_MODEL:Claude Sonnet 5.5" "SECTIONS:model,context,tokens,cost,cache,stats,resets" "RESETS:5h,7d,spend" \
+  for pair in "BASE_MODEL:Claude Sonnet 5.5" "SECTIONS:model,context,cost,cache,stats,resets" "RESETS:5h,7d,spend" \
               "CONTEXT_WARN:50" "CONTEXT_CRIT:80" "CACHE_WARN:20" "CACHE_CRIT:5" "RESET_WARN:50" "RESET_CRIT:80" "WIDTH:0(auto)" "MARGIN:2"; do
     k=${pair%%:*}; def=${pair#*:}
     local e="STATUSLINE_$k"
