@@ -5,7 +5,7 @@
 CFG=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
 CONF=$CFG/statusline/config
 PRICES=$CFG/model-prices.json
-ALL_SECTIONS=(model context cache stats resets)   # display order
+ALL_SECTIONS=(model context tokens cost overhead cache stats resets)   # display order
 
 usage() {
   cat <<'EOF'
@@ -16,16 +16,18 @@ Usage: config.sh <command>
   sections show|hide NAME...    enable/disable sections
   sections only NAME...         enable just these
   sections all                  enable all
-      NAME: model context cache stats resets   (stats = cache hit rate, shown inside cache)
+      NAME: model context tokens cost overhead cache stats resets   (overhead = extra cost of continuing vs a fresh session; stats = always show the cache hit rate (default: only when below 80%))
   resets LIST|all|none          which reset windows to show, e.g. 5h,7d,spend
   thresholds context|resets WARN CRIT   yellow/red at WARN/CRIT percent used (0-100)
   thresholds cache WARN CRIT            yellow/red when WARN/CRIT minutes are left
+  thresholds overhead WARN CRIT         yellow/red at WARN/CRIT extra cents per call vs a fresh session
+  overhead [FRESH [SUMMARY]]    token sizes for the overhead metric: a fresh session (25000), a compaction summary (8000)
   width [N|auto]                terminal columns to fit the line into (auto = detect from the tty;
                                 if unknown the line is never compacted)
   margin N                      columns kept free at the right edge (default 2)
   dump [PATH|off]               write the raw status-line JSON + detected width/level to PATH on each run
   reset [KEY...]                drop saved settings (all if none given)
-      KEY: BASE_MODEL SECTIONS RESETS CONTEXT_WARN CONTEXT_CRIT CACHE_WARN CACHE_CRIT RESET_WARN RESET_CRIT WIDTH MARGIN DUMP
+      KEY: BASE_MODEL SECTIONS RESETS CONTEXT_WARN CONTEXT_CRIT CACHE_WARN CACHE_CRIT RESET_WARN RESET_CRIT WIDTH MARGIN DUMP FRESH_TOKENS SUMMARY_TOKENS OVERHEAD_WARN OVERHEAD_CRIT
 EOF
 }
 
@@ -81,8 +83,8 @@ save_sections() {
 cmd_show() {
   local k def v src
   printf '%-14s %-38s %s\n' setting value source
-  for pair in "BASE_MODEL:Claude Sonnet 5.5" "SECTIONS:model,context,cache,stats,resets" "RESETS:5h,7d,spend" \
-              "CONTEXT_WARN:50" "CONTEXT_CRIT:80" "CACHE_WARN:20" "CACHE_CRIT:5" "RESET_WARN:50" "RESET_CRIT:80" "WIDTH:0(auto)" "MARGIN:2"; do
+  for pair in "BASE_MODEL:Claude Sonnet 5.5" "SECTIONS:model,context,cost,overhead,cache,resets" "RESETS:5h,7d,spend" \
+              "CONTEXT_WARN:50" "CONTEXT_CRIT:80" "CACHE_WARN:20" "CACHE_CRIT:5" "RESET_WARN:50" "RESET_CRIT:80" "WIDTH:0(auto)" "MARGIN:2" "FRESH_TOKENS:25000" "SUMMARY_TOKENS:8000" "OVERHEAD_WARN:5" "OVERHEAD_CRIT:20"; do
     k=${pair%%:*}; def=${pair#*:}
     local e="STATUSLINE_$k"
     if [ -n "${!e}" ]; then v=${!e}; src="env $e"
@@ -117,7 +119,7 @@ sections_status() {
   for s in "${ALL_SECTIONS[@]}"; do case " ${cur[*]} " in *" $s "*) ;; *) hidden="$hidden $s" ;; esac; done
   echo "enabled: ${cur[*]}"
   echo "hidden: ${hidden:- (none)}"
-  echo "names:   ${ALL_SECTIONS[*]}   (stats = cache hit rate, shown inside cache)"
+  echo "names:   ${ALL_SECTIONS[*]}   (stats = always show the cache hit rate (default: only when below 80%))"
   echo "change:  sections show|hide|only NAME...   or   sections all"
 }
 
@@ -155,17 +157,19 @@ cmd_resets() {
 cmd_thresholds() {
   local what=$1 warn=$2 crit=$3 pre
   case $what in
-    context) pre=CONTEXT ;; resets) pre=RESET ;; cache) pre=CACHE ;;
-    *) die "thresholds: expected context|resets|cache WARN CRIT" ;;
+    context) pre=CONTEXT ;; resets) pre=RESET ;; cache) pre=CACHE ;; overhead) pre=OVERHEAD ;;
+    *) die "thresholds: expected context|resets|cache|overhead WARN CRIT" ;;
   esac
   is_int "$warn" && is_int "$crit" || die "thresholds: WARN and CRIT must be whole numbers"
   if [ "$what" = cache ]; then
     [ "$crit" -lt "$warn" ] || die "cache: CRIT minutes must be lower than WARN (red comes later, as time runs out)"
+  elif [ "$what" = overhead ]; then
+    [ "$warn" -lt "$crit" ] || die "overhead: need WARN < CRIT (cents per call)"
   else
     [ "$warn" -lt "$crit" ] && [ "$crit" -le 100 ] || die "$what: need WARN < CRIT <= 100"
   fi
   put "${pre}_WARN" "$warn" "${pre}_CRIT" "$crit"
-  echo "$what: yellow at $warn, red at $crit$([ "$what" = cache ] && echo ' minutes left' || echo '%')"
+  echo "$what: yellow at $warn, red at $crit$(case $what in cache) echo ' minutes left' ;; overhead) echo ' cents per call' ;; *) echo '%' ;; esac)"
 }
 
 cmd_width() {
@@ -187,6 +191,14 @@ cmd_dump() {
   put DUMP "$1"; echo "dump: $1"
 }
 
+cmd_overhead() {
+  if [ $# -eq 0 ]; then echo "overhead: fresh $(get FRESH_TOKENS || true) summary $(get SUMMARY_TOKENS || true) (empty = default 25000 / 8000)"; return; fi
+  is_int "$1" && [ "$1" -gt 0 ] || die "overhead: FRESH must be a positive token count"
+  put FRESH_TOKENS "$1"
+  if [ -n "$2" ]; then is_int "$2" && [ "$2" -gt 0 ] || die "overhead: SUMMARY must be a positive token count"; put SUMMARY_TOKENS "$2"; fi
+  echo "overhead: fresh $1 summary ${2:-unchanged}"
+}
+
 cmd_reset() {
   if [ $# -eq 0 ]; then rm -f "$CONF"; echo "all saved settings removed"; else drop "$@"; echo "removed: $*"; fi
 }
@@ -200,6 +212,7 @@ case $cmd in
   thresholds) cmd_thresholds "$@" ;;
   width)      cmd_width "$@" ;;
   margin)     cmd_margin "$@" ;;
+  overhead)   cmd_overhead "$@" ;;
   dump)       cmd_dump "$@" ;;
   reset)      cmd_reset "$@" ;;
   ''|-h|--help|help) usage ;;

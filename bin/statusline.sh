@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claude Code status line. Sections joined by " | ":
-# model | context bar | prompt cache (time left, hit rate) | rate-limit resets | custom reset
+# model effort | context bar + overhead | session tokens, cost | prompt cache (time left, low hit rate) | rate-limit resets | custom reset
 # Needs: bash, jq (+ curl, awk for the background price refresh).
 CFG=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
 mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null; }   # GNU || BSD
@@ -28,7 +28,7 @@ CONF=$CFG/statusline/config
 if [ -r "$CONF" ]; then
   while IFS== read -r k v; do
     case $k in
-      BASE_MODEL|SECTIONS|RESETS|PRICES_TTL|CONTEXT_WARN|CONTEXT_CRIT|CACHE_WARN|CACHE_CRIT|RESET_WARN|RESET_CRIT|WIDTH|MARGIN|DUMP)
+      BASE_MODEL|SECTIONS|RESETS|PRICES_TTL|CONTEXT_WARN|CONTEXT_CRIT|CACHE_WARN|CACHE_CRIT|RESET_WARN|RESET_CRIT|WIDTH|MARGIN|DUMP|FRESH_TOKENS|SUMMARY_TOKENS|OVERHEAD_WARN|OVERHEAD_CRIT)
         printf -v "cf_$k" '%s' "$v" ;;
     esac
   done < "$CONF"
@@ -38,12 +38,15 @@ setting() { local e="STATUSLINE_$1" f="cf_$1"; echo "${!e:-${!f:-$2}}"; }
 # num KEY DEFAULT -> setting, or DEFAULT if not a non-negative integer
 num() { local v; v=$(setting "$1" "$2"); case $v in ''|*[!0-9]*) v=$2 ;; esac; echo "$v"; }
 BASE_MODEL=$(setting BASE_MODEL "Claude Sonnet 5.5")
-SECTIONS=$(setting SECTIONS "model,context,cache,stats,resets")
+SECTIONS=$(setting SECTIONS "model,context,cost,overhead,cache,resets")   # tokens: opt-in (same as context %)
 PRICES_TTL=$(num PRICES_TTL 3600)
 CONTEXT_WARN=$(num CONTEXT_WARN 50); CONTEXT_CRIT=$(num CONTEXT_CRIT 80)   # context used, %
 CACHE_WARN=$(num CACHE_WARN 20);     CACHE_CRIT=$(num CACHE_CRIT 5)        # cache time left, minutes
 RESET_WARN=$(num RESET_WARN 50);     RESET_CRIT=$(num RESET_CRIT 80)       # reset window used, %
 WIDTH=$(num WIDTH 0)      # terminal columns; 0 = detect from /dev/tty, unknown = never compact
+FRESH_TOKENS=$(num FRESH_TOKENS 25000)       # context of a fresh session (system prompt, tools, CLAUDE.md)
+SUMMARY_TOKENS=$(num SUMMARY_TOKENS 8000)    # size of a compaction summary
+OVERHEAD_WARN=$(num OVERHEAD_WARN 5); OVERHEAD_CRIT=$(num OVERHEAD_CRIT 20)   # extra cents per call vs a fresh session
 MARGIN=$(num MARGIN 2)    # columns kept free at the right edge when fitting
 sec() { case ",$SECTIONS," in *",$1,"*) return 0 ;; esac; return 1; }   # is section enabled?
 
@@ -52,6 +55,17 @@ input=$(cat)
 # a line with the detected width and compaction level (to see what the API sends / why it compacts)
 DUMP=$(setting DUMP "")
 [ -n "$DUMP" ] && printf '%s\n' "$input" > "$DUMP"
+
+# Rate limits cache: new sessions don't get rate_limits, so keep the last-seen windows.
+# Fresh data always overwrites (atomic); cached windows already past resets_at are dropped on read.
+RL_CACHE=$CFG/statusline/ratelimits.json
+if [ "$(echo "$input" | jq '(.rate_limits // {}) | length')" -gt 0 ]; then
+  mkdir -p "${RL_CACHE%/*}" && tmp=$(mktemp "$RL_CACHE.XXXXXX") \
+    && echo "$input" | jq -c '.rate_limits' > "$tmp" && mv -f "$tmp" "$RL_CACHE" || rm -f "$tmp"
+elif [ -r "$RL_CACHE" ]; then
+  merged=$(echo "$input" | jq --slurpfile rl "$RL_CACHE" --argjson now "$(date +%s)" \
+    '.rate_limits = ($rl[0] // {} | with_entries(select((.value.resets_at // 0) > $now)))' 2>/dev/null) && input=$merged
+fi
 
 model=$(echo "$input" | jq -r '.model.display_name')
 model_plain=$model
@@ -62,17 +76,31 @@ if [ ! -e "$PRICES" ] || [ $(( $(date +%s) - $(mtime "$PRICES") )) -ge "$PRICES_
   STATUSLINE_PRICES_TTL=$PRICES_TTL nohup "$HERE/refresh-model-prices.sh" >/dev/null 2>&1 </dev/null &
 fi
 fast=$(echo "$input" | jq -r '.fast_mode // false')
-mult=$(jq -r --arg m "Claude $(echo "$input" | jq -r '.model.display_name')" --arg b "$BASE_MODEL" --argjson fast "$fast" '
-  .models as $p | ($p[$b].in // empty) as $base | $p[$m] // empty
-  | (if $fast and .fast_in then .fast_in else .in end) / $base
-  | . * 10 | round / 10' "$PRICES" 2>/dev/null)
-[ -n "$mult" ] && model="$model (x$(printf '%.1f' "$mult"))"
+model_name=$(echo "$input" | jq -r '.model.display_name')
+# Match price table keys: try exact, with "Claude " prefix, case-insensitive
+mult=$(jq -r --arg m "$model_name" --arg b "$BASE_MODEL" --argjson fast "$fast" '
+  .models as $p | ($p[$b].in // empty) as $base
+  | if $base == "" or $base == 0 then empty
+    else ($p[$m] // $p["Claude " + $m] // $p[($m | ascii_downcase)] // $p["claude " + ($m | ascii_downcase)] // empty)
+         | (if $fast and .fast_in then .fast_in else .in end) / $base
+         | . * 10 | round / 10
+    end' "$PRICES" 2>/dev/null)
+# multiplier only when it differs from the base model: "Opus 5 x1.7"; trailing .0 dropped ("x2")
+if [ -n "$mult" ]; then
+  m1=$(printf '%.1f' "$mult")
+  [ "$m1" != "1.0" ] && model="$model_name x${m1%.0}"
+fi
 used=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 # Context window size -> "200k" / "1M"
 csize=$(echo "$input" | jq -r '.context_window.context_window_size // empty')
 if [ -n "$csize" ]; then
   if [ "$csize" -ge 1000000 ]; then csize="$(( csize / 1000000 ))M"; else csize="$(( csize / 1000 ))k"; fi
 fi
+
+# Session tokens, cost and effort level in one jq call ("-" = absent)
+IFS=$'\t' read -r tok_in tok_out cost_usd effort_level < <(echo "$input" | jq -r '
+  [.context_window.total_input_tokens, .context_window.total_output_tokens, .cost.total_cost_usd, .effort.level]
+  | map(if . == null or . == "" then "-" else tostring end) | join("\t")')
 
 # Colors (dim-friendly)
 RESET=$'\033[0m'
@@ -82,14 +110,46 @@ GREEN=$'\033[32m'
 YELLOW=$'\033[33m'
 RED=$'\033[31m'
 
-bar=""; bar_s=""
+# Effort level (Claude Code input .effort.level), abbreviated: lo dim, med green, hi yellow, xhi/max red
+effort=""
+case $effort_level in
+  low)    effort="${DIM}lo${RESET}" ;;
+  medium) effort="${GREEN}med${RESET}" ;;
+  high)   effort="${YELLOW}hi${RESET}" ;;
+  xhigh)  effort="${RED}xhi${RESET}" ;;
+  max)    effort="${RED}max${RESET}" ;;
+  ''|-)   ;;
+  *)      effort="${DIM}${effort_level}${RESET}" ;;
+esac
+
+# Session usage: tokens (input+output so far) and cost; "-" = not sent
+fmt_tok() {   # 245152 -> 245k, 1234567 -> 1.2M, 4200 -> 4.2k
+  local n=$1
+  if   [ "$n" -ge 1000000 ]; then printf '%d.%dM' $(( n / 1000000 )) $(( n % 1000000 / 100000 ))
+  elif [ "$n" -ge 10000 ];   then printf '%dk' $(( n / 1000 ))
+  elif [ "$n" -ge 1000 ];    then printf '%d.%dk' $(( n / 1000 )) $(( n % 1000 / 100 ))
+  else printf '%d' "$n"; fi
+}
+tokens=""; cost=""
+if [ "$tok_in" != - ] && [ "$tok_out" != - ]; then
+  tokens="$(fmt_tok $(( tok_in + tok_out ))) ${DIM}tok${RESET}"
+fi
+[ "$cost_usd" != - ] && cost="$(LC_ALL=C printf '$%.2f' "$cost_usd") ${DIM}sess${RESET}"
+
+# Context usage: 3-char indicator (border + fill + border)
+ctx_fill=""
+ctx_pct=""
 if [ -n "$used" ]; then
   pct=$(printf '%.0f' "$used")
-  # 5 cells x 4 shades (░ ▒ ▓ █) = 15 steps, Norton-Commander style
-  width=5
-  steps=$(( (pct * width * 3 + 50) / 100 ))
-  [ "$steps" -gt $(( width * 3 )) ] && steps=$(( width * 3 ))
-  full=$(( steps / 3 )); part=$(( steps % 3 ))
+  # 8 levels using lower blocks: ▁ ▂ ▃ ▄ ▅ ▆ ▇ █ (evenly spaced 12.5% increments)
+  if   [ "$pct" -lt 12 ]; then ctx_fill="▁"
+  elif [ "$pct" -lt 25 ]; then ctx_fill="▂"
+  elif [ "$pct" -lt 37 ]; then ctx_fill="▃"
+  elif [ "$pct" -lt 50 ]; then ctx_fill="▄"
+  elif [ "$pct" -lt 62 ]; then ctx_fill="▅"
+  elif [ "$pct" -lt 75 ]; then ctx_fill="▆"
+  elif [ "$pct" -lt 87 ]; then ctx_fill="▇"
+  else ctx_fill="█"; fi
 
   if [ "$pct" -ge "$CONTEXT_CRIT" ]; then
     color=$RED
@@ -98,30 +158,25 @@ if [ -n "$used" ]; then
   else
     color=$GREEN
   fi
-
-  cells=""
-  for (( i = 0; i < width; i++ )); do
-    if   [ "$i" -lt "$full" ]; then cells+="█"
-    elif [ "$i" -eq "$full" ] && [ "$part" -gt 0 ]; then cells+=$([ "$part" -eq 1 ] && echo "▒" || echo "▓")
-    else cells+="${DIM}░${RESET}${color}"
-    fi
-  done
-
-  bar_s="${color}${cells}${RESET} ${color}${pct}%${RESET}"                # no window size
-  bar="${bar_s}${csize:+ ${DIM}(${csize})${RESET}}"
+  # 3-char: left border (▕) + fill + right border (▏)
+  ctx_char="${color}▕${ctx_fill}▏${RESET}"
+  ctx_pct="${color}${pct}%${RESET}"
+  bar="${ctx_char} ${ctx_pct}${csize:+${DIM}/${csize}${RESET}}"
+  bar_s="${ctx_char} ${ctx_pct}"
 else
   bar="${DIM}(no context data)${RESET}"; bar_s=$bar
 fi
 
-# Prompt cache: time left until expiry + hit rate (the "stats" section toggles the rate)
-cache=""; cache_s=""
+# Prompt cache: "⏱ 25m" time left (minutes; green/yellow/red), "⏱ cold" once expired. The hit rate
+# is added only when below 80% (red), or always when the "stats" section is enabled.
+cache=""; cache_s=""; cache_cold=""
 ttl=$(echo "$input" | jq -r '.prompt_cache.ttl // empty')
 if [ -n "$ttl" ]; then
   warm=$(echo "$input" | jq -r '.prompt_cache.warm // false')
   exp=$(echo "$input" | jq -r '.prompt_cache.expires_at // empty')
   sp=$(echo "$input" | jq -r '.prompt_cache | select(.requests != null) | (.hit_ratio * 100) | round')
   stats=""
-  if sec stats && [ -n "$sp" ]; then
+  if [ -n "$sp" ] && { sec stats || [ "$sp" -lt 80 ]; }; then
     scolor=$GREEN; [ "$sp" -lt 80 ] && scolor=$RED
     stats=" ${scolor}${sp}%${RESET}"
   fi
@@ -132,12 +187,55 @@ if [ -n "$ttl" ]; then
       ccolor=$GREEN
       [ "$rem" -lt $(( CACHE_WARN * 60 )) ] && ccolor=$YELLOW
       [ "$rem" -lt $(( CACHE_CRIT * 60 )) ] && ccolor=$RED
-      cache="${DIM}cache${RESET} ${ccolor}$(fmt_dur "$rem")${RESET}"
+      [ "$rem" -ge 60 ] && rem=$(( rem / 60 * 60 ))     # whole minutes, no seconds
+      ctime=$(fmt_dur "$rem"); ctime=${ctime% 0s}; ctime=${ctime// /}
+      cache="${DIM}⏱${RESET} ${ccolor}${ctime}${RESET}"   # space: some terminals draw ⏱ two cells wide
     fi
   fi
-  [ -z "$cache" ] && cache="${RED}no cache${RESET}"
+  [ -z "$cache" ] && { cache="${RED}⏱ cold${RESET}"; cache_cold=1; }
   cache_s=$cache                 # no hit rate
   cache="${cache}${stats}"
+fi
+
+# Overhead of continuing this session vs starting a fresh one (section "overhead").
+# C = tokens a cold cache must re-write (Claude Code: prompt_cache.recache_tokens_if_cold), S = FRESH_TOKENS.
+# Prices per token: read 0.1x base input, write 1.25x (5m cache) or 2x (1h cache). All $:
+#   per call  = (C-S)*0.1*p              extra read cost of the carried context, every call
+#   cold      = (C-S)*w*p                extra one-time re-write when the cache has expired
+#   break-even= S*w / ((C-S)*0.1) calls  after that many calls a fresh session (one write of S) has cost less
+#   compact   = C*0.1*p + M*out + (S+M)*w*p   read all, write a summary of M tokens, re-cache S+M
+overhead=""; overhead_s=""
+money() { LC_ALL=C awk -v x="$1" 'BEGIN { c = x * 100; if (c < 1) print "<1¢"; else if (c < 100) printf "%d¢", c + 0.5; else printf "$%.2f", x }'; }
+if sec overhead && [ -n "$ttl" ]; then
+  ctoks=$(echo "$input" | jq -r '.prompt_cache.recache_tokens_if_cold // empty')
+  read -r pin pout < <(jq -r --arg m "$model_name" --argjson fast "$fast" '
+    .models | (.[$m] // .["Claude " + $m] // .[($m | ascii_downcase)] // .["claude " + ($m | ascii_downcase)] // empty)
+    | "\(if $fast and .fast_in then .fast_in else .in end) \(.out)"' "$PRICES" 2>/dev/null)
+  if [ -n "$ctoks" ] && [ -n "$pin" ] && [ "$ctoks" -gt "$FRESH_TOKENS" ]; then
+    wmul=1.25; [ "$ttl" = 1h ] && wmul=2
+    read -r o_call o_cold o_be o_compact < <(LC_ALL=C awk -v C="$ctoks" -v S="$FRESH_TOKENS" -v M="$SUMMARY_TOKENS" \
+      -v p="$pin" -v o="$pout" -v w="$wmul" 'BEGIN {
+        d = C - S
+        printf "%.4f %.4f %.1f %.4f\n", d*0.1*p/1e6, d*w*p/1e6, S*w/(d*0.1), (C*0.1*p + M*o + (S+M)*w*p)/1e6 }')
+    if [ -n "$o_call" ]; then
+      ocents=$(LC_ALL=C awk -v x="$o_call" 'BEGIN { printf "%d", x * 100 }')
+      ocolor=$GREEN
+      [ "$ocents" -ge "$OVERHEAD_WARN" ] && ocolor=$YELLOW
+      [ "$ocents" -ge "$OVERHEAD_CRIT" ] && ocolor=$RED
+      be=$(LC_ALL=C awk -v x="$o_be" 'BEGIN { n = int(x); if (n < x) n++; print (n < 1 ? 1 : n) }')
+      if [ -n "$cache_cold" ]; then
+        overhead_s="${RED}cold +$(money "$o_cold")${RESET}"
+        overhead=$overhead_s
+      else
+        overhead_s="${ocolor}+$(money "$o_call")/call${RESET}"
+        overhead="$overhead_s ${DIM}new@${be}${RESET}"
+      fi
+      if [ -n "$pct" ] && [ "$pct" -ge "$CONTEXT_CRIT" ]; then
+        overhead="$overhead ${DIM}compact${RESET} $(money "$o_compact")"
+        overhead_s="$overhead_s ${DIM}compact${RESET} $(money "$o_compact")"
+      fi
+    fi
+  fi
 fi
 
 # Reset sections, "[name] <pct>% <left> / <total>" for every rate_limits window the
@@ -231,29 +329,39 @@ case $cols in ''|*[!0-9]*) cols=0 ;; esac
 
 sep="${DIM} | ${RESET}"
 # render LEVEL -> sets $line. Higher level = more compact, each step drops one thing:
-#   1 context size, named extra windows, custom reset | 2 cache hit rate | 3 "/ total" on windows
-#   4 price multiplier, all windows but the first | 5 cache | 6 reset windows
+#   1 context size, named extra windows, custom reset | 2 cache hit rate, overhead detail | 3 "/ total" on windows, cost
+#   4 price multiplier, effort level, all windows but the first | 5 cache, tokens, overhead | 6 reset windows
 render() {
-  local lvl=$1 parts=() p m=$model b=$bar c=$cache ext=1 tot=1 only1=0
+  local lvl=$1 parts=() p m=$model b=$bar c=$cache e=$effort k=$cost o=$overhead ext=1 tot=1 only1=0 t=$tokens
   [ "$lvl" -ge 1 ] && { b=$bar_s; ext=0; }
-  [ "$lvl" -ge 2 ] && c=$cache_s
-  [ "$lvl" -ge 3 ] && tot=0
-  [ "$lvl" -ge 4 ] && { m=$model_plain; only1=1; }
-  [ "$lvl" -ge 5 ] && c=""
+  [ "$lvl" -ge 2 ] && { c=$cache_s; o=$overhead_s; }
+  [ "$lvl" -ge 3 ] && { tot=0; k=""; }
+  [ "$lvl" -ge 4 ] && { m=$model_plain; e=""; only1=1; }
+  [ "$lvl" -ge 5 ] && { c=""; t=""; o=""; }
   build_limits "$ext" "$tot"
   [ "$lvl" -ge 6 ] && limits=()
   [ "$only1" = 1 ] && limits=("${limits[@]:0:1}")
   [ "$lvl" -eq 0 ] && [ -n "$custom" ] && limits+=("$custom")
-  sec model   && parts+=("${CYAN}${m}${RESET}")
-  sec context && parts+=("$b")
+  sec model   && parts+=("${CYAN}${m}${RESET}${e:+ $e}")
+  # overhead joins the context segment (same subject: what the carried context costs)
+  if sec context; then
+    if sec overhead; then parts+=("$b${o:+ $o}"); else parts+=("$b"); fi
+  elif sec overhead; then parts+=("$o"); fi
+  sec tokens  && parts+=("$t")
+  sec cost    && parts+=("$k")
   sec cache   && parts+=("$c")
   sec resets  && parts+=("${limits[@]}")
   line=""
   for p in "${parts[@]}"; do [ -z "$p" ] && continue; line="${line:+$line$sep}$p"; done
 }
+
 # visible width: strip color codes, count each block char as one column (locale-proof)
 shopt -s extglob
-visible() { local t=${1//$'\033'\[+([0-9;])m/}; t=${t//█/x}; t=${t//▓/x}; t=${t//▒/x}; t=${t//░/x}; echo "${#t}"; }
+visible() {
+  local t=${1//$'\033'\[+([0-9;])m/} g
+  for g in █ ▇ ▆ ▅ ▄ ▃ ▂ ▁ ▏ ▕; do t=${t//$g/x}; done
+  echo "${#t}"
+}
 
 level=0
 render 0

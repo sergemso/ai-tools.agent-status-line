@@ -1,6 +1,6 @@
 # claude-code-status-line
 
-A [Claude Code](https://claude.com/claude-code) status line, packaged as a plugin. One line with the model and its price multiplier, context usage, prompt-cache time left and hit rate, and rate-limit resets. About 90 columns with the default windows; it shrinks itself on narrow terminals.
+A [Claude Code](https://claude.com/claude-code) status line, packaged as a plugin. One line with the model, its price multiplier and effort level, context usage, session tokens and cost, prompt-cache time left and hit rate, and rate-limit resets. About 90 columns with the default windows; it shrinks itself on narrow terminals.
 
 [What you see](#what-you-see) · [Install](#install) · [Settings](#settings) · [Narrow terminals](#narrow-terminals) · [Troubleshooting](#troubleshooting)
 
@@ -13,20 +13,22 @@ The same in plain text:
 ```text
         10        20        30        40        50        60        70        80        90       100       110       120
 123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
-Sonnet 5.5 (x1.0) | ██░░░ 42% (200k) | cache 24m 58s 90% | 12% 4h 59m / 5h | 55% 6d 23h / 7d | opus 83% 6d 23h / 7d
-└───────1───────┘   └───────2──────┘   └───────3───────┘   └──────4──────┘   └──────5──────┘   └─────────6────────┘
+Sonnet 5.5 hi | ▕▄▏ 42%/200k +1¢/call new@9 | $5.60 sess | ⏱ 25m | 12% 4h 59m / 5h | 55% 6d 23h / 7d
+└─────1─────┘   └────2─────┘ └─────3──────┘   └───4────┘   └─5─┘   └──────6──────┘   └──────7──────┘
 ```
 
 | # | Section | Shows | Colors |
 |---|---|---|---|
-| 1 | **Model** | Active model. `(x1.0)` is its input price relative to your base model (default Sonnet 5.5; change it with `/statusline-model`). Fast mode is priced in. | cyan |
-| 2 | **Context** | Fill bar of 5 cells with 4 shades (`░▒▓█`, 15 steps), percent used, window size. | 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80% |
-| 3 | **Prompt cache** | Time until the cache expires, then its hit rate. `no cache` when it has expired. | time: 🟩 · 🟨 < 20 min · 🟥 < 5 min<br>hit rate: 🟩 ≥ 80% · 🟥 < 80% |
-| 4 | **5-hour window** | `<used %> <time to reset> / <window length>` | 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80% |
-| 5 | **7-day window** | Same format. A gateway spend limit looks the same, e.g. `81% 21d 23h / 30d`. | as above |
-| 6 | **Extra windows** | Optional (`/statusline-resets all`): any other window the API sends (for example a per-model weekly limit), shown with a dim name. | as above |
+| 1 | **Model** | Active model. `x5` is its input price relative to your base model (hidden when it is x1; base model default Sonnet 5.5, change it with `/statusline-model`). Fast mode is priced in. The effort level (`lo`, `med`, `hi`, `xhi`, `max`) follows when Claude Code sends it. | model cyan<br>effort: dim lo · 🟩 med · 🟨 hi · 🟥 xhi/max |
+| 2 | **Context** | 3-char bordered indicator (`▕▁▏`–`▕█▏`), percent used, window size. | 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80% |
+| 3 | **Overhead** | Shown right after the context indicator (no separator). `+1¢/call new@9`: extra cost per call of re-reading this session's context versus a fresh session (cache read 0.1x, write 1.25x/2x by TTL), and (`new@9`) after how many calls a fresh session has cost less in total. Expired cache: `cold +24¢`, the extra one-time re-write. From 80% context it adds `compact 38¢`, the estimated cost of summarizing. Assumes a fresh session of 25k tokens and an 8k summary (`config.sh overhead FRESH SUMMARY`); counts context cost only. | 🟩 < 5¢ · 🟨 < 20¢ · 🟥 ≥ 20¢ per call (`config.sh thresholds overhead`), cold: 🟥 |
+| 4 | **Session cost** | Cost in USD of the current session (resets with a new session), as Claude Code reports it. Optional `tokens` section (off by default: it mirrors the context %). | plain, dim `sess` |
+| 5 | **Prompt cache** | `⏱ 25m`: whole minutes until the prompt cache expires, `⏱ cold` when it has. The hit rate is appended only when below 80% (`⏱ 25m 62%`), or always with the `stats` section. | time: 🟩 · 🟨 < 20 min · 🟥 < 5 min<br>hit rate: 🟥 < 80% |
+| 6 | **5-hour window** | `<used %> <time to reset> / <window length>` | 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80% |
+| 7 | **7-day window** | Same format. A gateway spend limit looks the same, e.g. `81% 21d 23h / 30d`. | as above |
+| 8 | **Extra windows** | Optional (`/statusline-resets all`): any other window the API sends (for example a per-model weekly limit), shown with a dim name. | as above |
 
-- Durations show their two most significant units (`6d 23h`, `24m 58s`, `59s`).
+- Durations show their two most significant units (`6d 23h`, `4h 59m`, `59s`).
 - Sections are separated by a dim `|`, and a section with no data disappears.
 - A **custom reset** is a countdown you define yourself (`STATUSLINE_CUSTOM_RESET`, see [Environment overrides](#environment-overrides)).
 - Everything above is configurable: [Settings](#settings).
@@ -72,7 +74,7 @@ Examples:
 | Setting | Meaning |
 |---|---|
 | model | Base model for the price multiplier, validated against the price table (names match case-insensitively, with or without `Claude `) |
-| sections | Enable or disable `model context cache stats resets` (`stats` = the hit rate inside `cache`) |
+| sections | Enable or disable `model context tokens cost overhead cache stats resets` (`stats` = always show the cache hit rate; default only when below 80%) |
 | resets | Which reset windows to show. Items are API keys (`seven_day_opus`) or aliases (`5h`, `7d`, `spend`, `7d-opus`); `all` shows every window the API sends. Windows other than 5h/7d/spend carry a dim name, e.g. `opus 83% 6d 23h / 7d` |
 | thresholds | `context`/`resets`: yellow/red at WARN/CRIT percent used (defaults 50/80). `cache`: yellow/red when WARN/CRIT minutes are left (20/5) |
 | width, margin | Columns to fit the line into (see [Narrow terminals](#narrow-terminals)); columns kept free at the right edge (default 2) |
@@ -99,13 +101,13 @@ On every refresh the script reads the terminal width (`stty size </dev/tty`) and
 
 | Level | Dropped, cumulatively | Example (default windows) |
 |---|---|---|
-| 0 | nothing | `Sonnet 5.5 (x1.0) \| ██░░░ 42% (200k) \| cache 24m 58s 90% \| 12% 4h 59m / 5h \| 55% 6d 23h / 7d` |
-| 1 | context window size, named extra windows, custom reset | `Sonnet 5.5 (x1.0) \| ██░░░ 42% \| cache 24m 58s 90% \| 12% 4h 59m / 5h \| 55% 6d 23h / 7d` |
-| 2 | cache hit rate | `… \| cache 24m 57s \| 12% 4h 59m / 5h \| …` |
-| 3 | `/ total` on windows | `… \| cache 24m 57s \| 12% 4h 59m \| 55% 6d 22h` |
-| 4 | price multiplier, windows after the first | `Sonnet 5.5 \| ██░░░ 42% \| cache 24m 56s \| 12% 4h 59m` |
-| 5 | cache | `Sonnet 5.5 \| ██░░░ 42% \| 12% 4h 59m` |
-| 6 | reset windows | `Sonnet 5.5 \| ██░░░ 42%` |
+| 0 | nothing | `Sonnet 5.5 hi \| ▕▄▏ 42%/200k +1¢/call new@9 \| $5.60 sess \| ⏱ 25m \| 12% 4h 59m / 5h \| 55% 6d 23h / 7d` |
+| 1 | context window size, named extra windows, custom reset | `Sonnet 5.5 hi \| ▕▄▏ 42% +1¢/call new@9 \| $5.60 sess \| ⏱ 25m \| 12% 4h 59m / 5h \| 55% 6d 23h / 7d` |
+| 2 | cache hit rate, overhead detail | `Sonnet 5.5 hi \| ▕▄▏ 42% +1¢/call \| $5.60 sess \| ⏱ 25m \| 12% 4h 59m / 5h \| 55% 6d 23h / 7d` |
+| 3 | `/ total` on windows, session cost | `Sonnet 5.5 hi \| ▕▄▏ 42% +1¢/call \| ⏱ 25m \| 12% 4h 59m \| 55% 6d 23h` |
+| 4 | price multiplier, effort level, windows after the first | `Sonnet 5.5 \| ▕▄▏ 42% +1¢/call \| ⏱ 25m \| 12% 4h 59m` |
+| 5 | cache, tokens (if enabled), overhead | `Sonnet 5.5 \| ▕▄▏ 42% \| 12% 4h 59m` |
+| 6 | reset windows | `Sonnet 5.5 \| ▕▄▏ 42%` |
 
 If the width can't be read (no tty), nothing is dropped; set it by hand with `config.sh width 100`. If `/dev/tty` isn't available to the script it uses the tty of the nearest parent process that has one. To see what it detected, run `config.sh dump /tmp/sl.txt` (or set `STATUSLINE_DUMP`): each run writes the raw JSON there, then a line `cols=… margin=… level=… visible=…`; `config.sh dump off` stops it.
 
@@ -114,7 +116,7 @@ If the width can't be read (no tty), nothing is dropped; set it by hand with `co
 | Symptom | Cause and fix |
 |---|---|
 | The old status line is still there | `/statusline:setup --force` replaces an existing `statusLine` setting. Check that `jq` is installed. |
-| Reset windows (`12% 3h / 5h`) are missing | They exist on subscription accounts only, and only when listed in `resets`. A saved list such as `spend` hides the rest: run `/statusline-reset RESETS`. To see which windows your account gets: `! bash ~/.claude/statusline/config.sh dump /tmp/sl.txt`, then read the file. |
+| Reset windows (`12% 3h / 5h`) are missing | They exist on subscription accounts only (enterprise and API-key sessions get no `rate_limits` from Claude Code, so nothing is shown; the tokens and cost sections still work), and only when listed in `resets`. A saved list such as `spend` hides the rest: run `/statusline-reset RESETS`. To see which windows your account gets: `! bash ~/.claude/statusline/config.sh dump /tmp/sl.txt`, then read the file. |
 | The multiplier says `(x2.0)` | It is relative to your base model, which defaults to Sonnet 5.5. Set it with `/statusline-model`. |
 | `no cache` | The prompt cache has expired or has not been written yet; it turns into a countdown after the next request. |
 | The line never gets shorter in a small window | The width could not be read. Set it by hand with `/statusline-width 100`, or use `dump` (see [Narrow terminals](#narrow-terminals)). |
