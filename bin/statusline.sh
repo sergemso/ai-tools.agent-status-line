@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claude Code status line. Sections joined by " | ":
-# model effort | context bar + overhead | session tokens, cost | prompt cache (time left, hit rate) | rate-limit resets | custom reset
+# model effort | context bar + overhead | session tokens, cost | prompt cache (time left, low hit rate) | rate-limit resets | custom reset
 # Needs: bash, jq (+ curl, awk for the background price refresh).
 CFG=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
 mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null; }   # GNU || BSD
@@ -38,7 +38,7 @@ setting() { local e="STATUSLINE_$1" f="cf_$1"; echo "${!e:-${!f:-$2}}"; }
 # num KEY DEFAULT -> setting, or DEFAULT if not a non-negative integer
 num() { local v; v=$(setting "$1" "$2"); case $v in ''|*[!0-9]*) v=$2 ;; esac; echo "$v"; }
 BASE_MODEL=$(setting BASE_MODEL "Claude Sonnet 5.5")
-SECTIONS=$(setting SECTIONS "model,context,cost,overhead,cache,stats,resets")   # tokens: opt-in (same as context %)
+SECTIONS=$(setting SECTIONS "model,context,cost,overhead,cache,resets")   # tokens: opt-in (same as context %)
 PRICES_TTL=$(num PRICES_TTL 3600)
 CONTEXT_WARN=$(num CONTEXT_WARN 50); CONTEXT_CRIT=$(num CONTEXT_CRIT 80)   # context used, %
 CACHE_WARN=$(num CACHE_WARN 20);     CACHE_CRIT=$(num CACHE_CRIT 5)        # cache time left, minutes
@@ -167,15 +167,16 @@ else
   bar="${DIM}(no context data)${RESET}"; bar_s=$bar
 fi
 
-# Prompt cache: time left until expiry + hit rate (the "stats" section toggles the rate)
-cache=""; cache_s=""
+# Prompt cache: "⏱25m" time left (minutes; green/yellow/red), "⏱ cold" once expired. The hit rate
+# is added only when below 80% (red), or always when the "stats" section is enabled.
+cache=""; cache_s=""; cache_cold=""
 ttl=$(echo "$input" | jq -r '.prompt_cache.ttl // empty')
 if [ -n "$ttl" ]; then
   warm=$(echo "$input" | jq -r '.prompt_cache.warm // false')
   exp=$(echo "$input" | jq -r '.prompt_cache.expires_at // empty')
   sp=$(echo "$input" | jq -r '.prompt_cache | select(.requests != null) | (.hit_ratio * 100) | round')
   stats=""
-  if sec stats && [ -n "$sp" ]; then
+  if [ -n "$sp" ] && { sec stats || [ "$sp" -lt 80 ]; }; then
     scolor=$GREEN; [ "$sp" -lt 80 ] && scolor=$RED
     stats=" ${scolor}${sp}%${RESET}"
   fi
@@ -186,10 +187,12 @@ if [ -n "$ttl" ]; then
       ccolor=$GREEN
       [ "$rem" -lt $(( CACHE_WARN * 60 )) ] && ccolor=$YELLOW
       [ "$rem" -lt $(( CACHE_CRIT * 60 )) ] && ccolor=$RED
-      cache="${DIM}cache${RESET} ${ccolor}$(fmt_dur "$rem")${RESET}"
+      [ "$rem" -ge 60 ] && rem=$(( rem / 60 * 60 ))     # whole minutes, no seconds
+      ctime=$(fmt_dur "$rem"); ctime=${ctime% 0s}; ctime=${ctime// /}
+      cache="${DIM}⏱${RESET}${ccolor}${ctime}${RESET}"
     fi
   fi
-  [ -z "$cache" ] && cache="${RED}no cache${RESET}"
+  [ -z "$cache" ] && { cache="${RED}⏱ cold${RESET}"; cache_cold=1; }
   cache_s=$cache                 # no hit rate
   cache="${cache}${stats}"
 fi
@@ -220,7 +223,7 @@ if sec overhead && [ -n "$ttl" ]; then
       [ "$ocents" -ge "$OVERHEAD_WARN" ] && ocolor=$YELLOW
       [ "$ocents" -ge "$OVERHEAD_CRIT" ] && ocolor=$RED
       be=$(LC_ALL=C awk -v x="$o_be" 'BEGIN { n = int(x); if (n < x) n++; print (n < 1 ? 1 : n) }')
-      if [[ $cache == *"no cache"* ]]; then
+      if [ -n "$cache_cold" ]; then
         overhead_s="${RED}cold +$(money "$o_cold")${RESET}"
         overhead=$overhead_s
       else
