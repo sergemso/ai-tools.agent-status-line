@@ -129,7 +129,7 @@ tokens=""; cost=""
 if [ "$tok_in" != - ] && [ "$tok_out" != - ]; then
   tokens="$(fmt_tok $(( tok_in + tok_out ))) ${DIM}tok${RESET}"
 fi
-[ "$cost_usd" != - ] && cost="$(LC_ALL=C printf '$%.2f' "$cost_usd") ${DIM}session${RESET}"
+[ "$cost_usd" != - ] && cost="$(LC_ALL=C printf '$%.2f' "$cost_usd") ${DIM}sess${RESET}"
 
 # Context usage: 3-char indicator (border + fill + border)
 ctx_fill=""
@@ -156,7 +156,7 @@ if [ -n "$used" ]; then
   # 3-char: left border (▕) + fill + right border (▏)
   ctx_char="${color}▕${ctx_fill}▏${RESET}"
   ctx_pct="${color}${pct}%${RESET}"
-  bar="${ctx_char} ${ctx_pct}${csize:+ ${DIM}(${csize})${RESET}}"
+  bar="${ctx_char} ${ctx_pct}${csize:+${DIM}/${csize}${RESET}}"
   bar_s="${ctx_char} ${ctx_pct}"
 else
   bar="${DIM}(no context data)${RESET}"; bar_s=$bar
@@ -197,6 +197,7 @@ fi
 #   break-even= S*w / ((C-S)*0.1) calls  after that many calls a fresh session (one write of S) has cost less
 #   compact   = C*0.1*p + M*out + (S+M)*w*p   read all, write a summary of M tokens, re-cache S+M
 overhead=""; overhead_s=""
+money() { LC_ALL=C awk -v x="$1" 'BEGIN { c = x * 100; if (c < 1) print "<1¢"; else if (c < 100) printf "%d¢", c + 0.5; else printf "$%.2f", x }'; }
 if sec overhead && [ -n "$ttl" ]; then
   ctoks=$(echo "$input" | jq -r '.prompt_cache.recache_tokens_if_cold // empty')
   read -r pin pout < <(jq -r --arg m "$model_name" --argjson fast "$fast" '
@@ -215,15 +216,15 @@ if sec overhead && [ -n "$ttl" ]; then
       [ "$ocents" -ge "$OVERHEAD_CRIT" ] && ocolor=$RED
       be=$(LC_ALL=C awk -v x="$o_be" 'BEGIN { n = int(x); if (n < x) n++; print (n < 1 ? 1 : n) }')
       if [[ $cache == *"no cache"* ]]; then
-        overhead_s="${DIM}ctx${RESET} ${RED}cold +$(LC_ALL=C printf '$%.2f' "$o_cold")${RESET}"
-        overhead="$overhead_s ${DIM}(new session cheaper)${RESET}"
+        overhead_s="${RED}cold +$(money "$o_cold")${RESET}"
+        overhead=$overhead_s
       else
-        overhead_s="${DIM}ctx${RESET} ${ocolor}+$(LC_ALL=C printf '$%.2f' "$o_call")/call${RESET}"
-        overhead="$overhead_s ${DIM}(new wins after ${be})${RESET}"
+        overhead_s="${ocolor}+$(money "$o_call")/call${RESET}"
+        overhead="$overhead_s ${DIM}new@${be}${RESET}"
       fi
       if [ -n "$pct" ] && [ "$pct" -ge "$CONTEXT_CRIT" ]; then
-        overhead="$overhead ${DIM}compact${RESET} $(LC_ALL=C printf '$%.2f' "$o_compact")"
-        overhead_s="$overhead_s ${DIM}compact${RESET} $(LC_ALL=C printf '$%.2f' "$o_compact")"
+        overhead="$overhead ${DIM}compact${RESET} $(money "$o_compact")"
+        overhead_s="$overhead_s ${DIM}compact${RESET} $(money "$o_compact")"
       fi
     fi
   fi

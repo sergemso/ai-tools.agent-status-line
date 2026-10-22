@@ -13,7 +13,7 @@ The same in plain text:
 ```text
          10        20        30        40        50        60        70        80        90       100       110       120
 123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
-Sonnet 5.5 (x1.0) high | ▕▄▏ 42% (200k) | $5.60 session | cache 24m 58s 90% | 12% 4h 59m / 5h | 55% 6d 23h / 7d
+Sonnet 5.5 (x1.0) high | ▕▄▏ 42%/200k | $5.60 sess | cache 24m 58s 90% | 12% 4h 59m / 5h | 55% 6d 23h / 7d
 └─────────1──────────┘   └─────2──────┘   └─────3─────┘   └───────4───────┘   └──────5──────┘   └──────6──────┘
 ```
 
@@ -21,8 +21,8 @@ Sonnet 5.5 (x1.0) high | ▕▄▏ 42% (200k) | $5.60 session | cache 24m 58s 90
 |---|---|---|---|
 | 1 | **Model** | Active model. `(x1.0)` is its input price relative to your base model (default Sonnet 5.5; change it with `/statusline-model`). Fast mode is priced in. The effort level (`low`, `medium`, `high`, `xhigh`, `max`) follows when Claude Code sends it. | model cyan<br>effort: dim low · 🟩 medium · 🟨 high · 🟥 xhigh/max |
 | 2 | **Context** | 3-char bordered indicator (`▕▁▏`–`▕█▏`), percent used, window size. | 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80% |
-| 3 | **Session cost** | Cost in USD of the current session (resets with a new session), as Claude Code reports it. Optional `tokens` section (off by default: it mirrors the context %). | plain, dim `session` |
-| 4 | **Overhead** | Shown in the context segment (no separator). `ctx +$0.04/call (new wins after 3)`: extra cost per call of re-reading this session's context versus a fresh session (cache read 0.1x, write 1.25x/2x by TTL), and after how many calls a fresh session has cost less in total. Expired cache: `ctx cold +$0.88`, the extra one-time re-write. From 80% context it adds `compact $0.38`, the estimated cost of summarizing. Assumes a fresh session of 25k tokens and an 8k summary (`config.sh overhead FRESH SUMMARY`); counts context cost only. | 🟩 < 5¢ · 🟨 < 20¢ · 🟥 ≥ 20¢ per call (`config.sh thresholds overhead`), cold: 🟥 |
+| 3 | **Session cost** | Cost in USD of the current session (resets with a new session), as Claude Code reports it. Optional `tokens` section (off by default: it mirrors the context %). | plain, dim `sess` |
+| 4 | **Overhead** | Shown in the context segment (no separator). `+4¢/call new@3`: extra cost per call of re-reading this session's context versus a fresh session (cache read 0.1x, write 1.25x/2x by TTL), and (`new@3`) after how many calls a fresh session has cost less in total. Expired cache: `cold +88¢`, the extra one-time re-write. From 80% context it adds `compact 38¢`, the estimated cost of summarizing. Assumes a fresh session of 25k tokens and an 8k summary (`config.sh overhead FRESH SUMMARY`); counts context cost only. | 🟩 < 5¢ · 🟨 < 20¢ · 🟥 ≥ 20¢ per call (`config.sh thresholds overhead`), cold: 🟥 |
 | 4b | **Prompt cache** | Time until the cache expires, then its hit rate. `no cache` when it has expired. | time: 🟩 · 🟨 < 20 min · 🟥 < 5 min<br>hit rate: 🟩 ≥ 80% · 🟥 < 80% |
 | 5 | **5-hour window** | `<used %> <time to reset> / <window length>` | 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80% |
 | 6 | **7-day window** | Same format. A gateway spend limit looks the same, e.g. `81% 21d 23h / 30d`. | as above |
@@ -101,8 +101,8 @@ On every refresh the script reads the terminal width (`stty size </dev/tty`) and
 
 | Level | Dropped, cumulatively | Example (default windows) |
 |---|---|---|
-| 0 | nothing | `Sonnet 5.5 (x1.0) high \| ▕▄▏ 42% (200k) \| $5.60 session \| cache 24m 58s 90% \| 12% 4h 59m / 5h \| 55% 6d 23h / 7d` |
-| 1 | context window size, named extra windows, custom reset | `… \| ▕▄▏ 42% \| $5.60 session \| …` |
+| 0 | nothing | `Sonnet 5.5 (x1.0) high \| ▕▄▏ 42%/200k \| $5.60 sess \| cache 24m 58s 90% \| 12% 4h 59m / 5h \| 55% 6d 23h / 7d` |
+| 1 | context window size, named extra windows, custom reset | `… \| ▕▄▏ 42% \| $5.60 sess \| …` |
 | 2 | cache hit rate, overhead detail | `… \| cache 24m 57s \| 12% 4h 59m / 5h \| …` |
 | 3 | `/ total` on windows, session cost | `… \| cache 24m 57s \| 12% 4h 59m \| 55% 6d 22h` |
 | 4 | price multiplier, effort level, windows after the first | `Sonnet 5.5 \| ▕▄▏ 42% \| cache 24m 56s \| 12% 4h 59m` |
