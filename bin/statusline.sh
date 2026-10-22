@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claude Code status line. Sections joined by " | ":
-# model effort | context bar | session tokens, cost | prompt cache (time left, hit rate) | rate-limit resets | custom reset
+# model effort | context bar + overhead | session tokens, cost | prompt cache (time left, hit rate) | rate-limit resets | custom reset
 # Needs: bash, jq (+ curl, awk for the background price refresh).
 CFG=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
 mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null; }   # GNU || BSD
@@ -334,10 +334,12 @@ render() {
   [ "$only1" = 1 ] && limits=("${limits[@]:0:1}")
   [ "$lvl" -eq 0 ] && [ -n "$custom" ] && limits+=("$custom")
   sec model   && parts+=("${CYAN}${m}${RESET}${e:+ $e}")
-  sec context && parts+=("$b")
+  # overhead joins the context segment (same subject: what the carried context costs)
+  if sec context; then
+    if sec overhead; then parts+=("$b${o:+ $o}"); else parts+=("$b"); fi
+  elif sec overhead; then parts+=("$o"); fi
   sec tokens  && parts+=("$t")
   sec cost    && parts+=("$k")
-  sec overhead && parts+=("$o")
   sec cache   && parts+=("$c")
   sec resets  && parts+=("${limits[@]}")
   line=""
