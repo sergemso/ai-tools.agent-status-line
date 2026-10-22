@@ -28,7 +28,7 @@ CONF=$CFG/statusline/config
 if [ -r "$CONF" ]; then
   while IFS== read -r k v; do
     case $k in
-      BASE_MODEL|SECTIONS|RESETS|PRICES_TTL|CONTEXT_WARN|CONTEXT_CRIT|CACHE_WARN|CACHE_CRIT|RESET_WARN|RESET_CRIT|WIDTH|MARGIN|DUMP)
+      BASE_MODEL|SECTIONS|RESETS|PRICES_TTL|CONTEXT_WARN|CONTEXT_CRIT|CACHE_WARN|CACHE_CRIT|RESET_WARN|RESET_CRIT|WIDTH|MARGIN|DUMP|FRESH_TOKENS|SUMMARY_TOKENS|OVERHEAD_WARN|OVERHEAD_CRIT)
         printf -v "cf_$k" '%s' "$v" ;;
     esac
   done < "$CONF"
@@ -38,12 +38,15 @@ setting() { local e="STATUSLINE_$1" f="cf_$1"; echo "${!e:-${!f:-$2}}"; }
 # num KEY DEFAULT -> setting, or DEFAULT if not a non-negative integer
 num() { local v; v=$(setting "$1" "$2"); case $v in ''|*[!0-9]*) v=$2 ;; esac; echo "$v"; }
 BASE_MODEL=$(setting BASE_MODEL "Claude Sonnet 5.5")
-SECTIONS=$(setting SECTIONS "model,context,cost,cache,stats,resets")   # tokens: opt-in (same as context %)
+SECTIONS=$(setting SECTIONS "model,context,cost,overhead,cache,stats,resets")   # tokens: opt-in (same as context %)
 PRICES_TTL=$(num PRICES_TTL 3600)
 CONTEXT_WARN=$(num CONTEXT_WARN 50); CONTEXT_CRIT=$(num CONTEXT_CRIT 80)   # context used, %
 CACHE_WARN=$(num CACHE_WARN 20);     CACHE_CRIT=$(num CACHE_CRIT 5)        # cache time left, minutes
 RESET_WARN=$(num RESET_WARN 50);     RESET_CRIT=$(num RESET_CRIT 80)       # reset window used, %
 WIDTH=$(num WIDTH 0)      # terminal columns; 0 = detect from /dev/tty, unknown = never compact
+FRESH_TOKENS=$(num FRESH_TOKENS 25000)       # context of a fresh session (system prompt, tools, CLAUDE.md)
+SUMMARY_TOKENS=$(num SUMMARY_TOKENS 8000)    # size of a compaction summary
+OVERHEAD_WARN=$(num OVERHEAD_WARN 5); OVERHEAD_CRIT=$(num OVERHEAD_CRIT 20)   # extra cents per call vs a fresh session
 MARGIN=$(num MARGIN 2)    # columns kept free at the right edge when fitting
 sec() { case ",$SECTIONS," in *",$1,"*) return 0 ;; esac; return 1; }   # is section enabled?
 
@@ -186,6 +189,46 @@ if [ -n "$ttl" ]; then
   cache="${cache}${stats}"
 fi
 
+# Overhead of continuing this session vs starting a fresh one (section "overhead").
+# C = tokens a cold cache must re-write (Claude Code: prompt_cache.recache_tokens_if_cold), S = FRESH_TOKENS.
+# Prices per token: read 0.1x base input, write 1.25x (5m cache) or 2x (1h cache). All $:
+#   per call  = (C-S)*0.1*p              extra read cost of the carried context, every call
+#   cold      = (C-S)*w*p                extra one-time re-write when the cache has expired
+#   break-even= S*w / ((C-S)*0.1) calls  after that many calls a fresh session (one write of S) has cost less
+#   compact   = C*0.1*p + M*out + (S+M)*w*p   read all, write a summary of M tokens, re-cache S+M
+overhead=""; overhead_s=""
+if sec overhead && [ -n "$ttl" ]; then
+  ctoks=$(echo "$input" | jq -r '.prompt_cache.recache_tokens_if_cold // empty')
+  read -r pin pout < <(jq -r --arg m "$model_name" --argjson fast "$fast" '
+    .models | (.[$m] // .["Claude " + $m] // .[($m | ascii_downcase)] // .["claude " + ($m | ascii_downcase)] // empty)
+    | "\(if $fast and .fast_in then .fast_in else .in end) \(.out)"' "$PRICES" 2>/dev/null)
+  if [ -n "$ctoks" ] && [ -n "$pin" ] && [ "$ctoks" -gt "$FRESH_TOKENS" ]; then
+    wmul=1.25; [ "$ttl" = 1h ] && wmul=2
+    read -r o_call o_cold o_be o_compact < <(LC_ALL=C awk -v C="$ctoks" -v S="$FRESH_TOKENS" -v M="$SUMMARY_TOKENS" \
+      -v p="$pin" -v o="$pout" -v w="$wmul" 'BEGIN {
+        d = C - S
+        printf "%.4f %.4f %.1f %.4f\n", d*0.1*p/1e6, d*w*p/1e6, S*w/(d*0.1), (C*0.1*p + M*o + (S+M)*w*p)/1e6 }')
+    if [ -n "$o_call" ]; then
+      ocents=$(LC_ALL=C awk -v x="$o_call" 'BEGIN { printf "%d", x * 100 }')
+      ocolor=$GREEN
+      [ "$ocents" -ge "$OVERHEAD_WARN" ] && ocolor=$YELLOW
+      [ "$ocents" -ge "$OVERHEAD_CRIT" ] && ocolor=$RED
+      be=$(LC_ALL=C awk -v x="$o_be" 'BEGIN { n = int(x); if (n < x) n++; print (n < 1 ? 1 : n) }')
+      if [[ $cache == *"no cache"* ]]; then
+        overhead_s="${DIM}ctx${RESET} ${RED}cold +$(LC_ALL=C printf '$%.2f' "$o_cold")${RESET}"
+        overhead="$overhead_s ${DIM}(new session cheaper)${RESET}"
+      else
+        overhead_s="${DIM}ctx${RESET} ${ocolor}+$(LC_ALL=C printf '$%.2f' "$o_call")/call${RESET}"
+        overhead="$overhead_s ${DIM}(new wins after ${be})${RESET}"
+      fi
+      if [ -n "$pct" ] && [ "$pct" -ge "$CONTEXT_CRIT" ]; then
+        overhead="$overhead ${DIM}compact${RESET} $(LC_ALL=C printf '$%.2f' "$o_compact")"
+        overhead_s="$overhead_s ${DIM}compact${RESET} $(LC_ALL=C printf '$%.2f' "$o_compact")"
+      fi
+    fi
+  fi
+fi
+
 # Reset sections, "[name] <pct>% <left> / <total>" for every rate_limits window the
 # API sends (five_hour, seven_day, spend_limit, and any it adds later).
 # STATUSLINE_RESETS (or RESETS in the config file) = comma list of what to show, in order. Each item is an API
@@ -277,15 +320,15 @@ case $cols in ''|*[!0-9]*) cols=0 ;; esac
 
 sep="${DIM} | ${RESET}"
 # render LEVEL -> sets $line. Higher level = more compact, each step drops one thing:
-#   1 context size, named extra windows, custom reset | 2 cache hit rate | 3 "/ total" on windows, cost
-#   4 price multiplier, effort level, all windows but the first | 5 cache, tokens | 6 reset windows
+#   1 context size, named extra windows, custom reset | 2 cache hit rate, overhead detail | 3 "/ total" on windows, cost
+#   4 price multiplier, effort level, all windows but the first | 5 cache, tokens, overhead | 6 reset windows
 render() {
-  local lvl=$1 parts=() p m=$model b=$bar c=$cache e=$effort k=$cost ext=1 tot=1 only1=0 t=$tokens
+  local lvl=$1 parts=() p m=$model b=$bar c=$cache e=$effort k=$cost o=$overhead ext=1 tot=1 only1=0 t=$tokens
   [ "$lvl" -ge 1 ] && { b=$bar_s; ext=0; }
-  [ "$lvl" -ge 2 ] && c=$cache_s
+  [ "$lvl" -ge 2 ] && { c=$cache_s; o=$overhead_s; }
   [ "$lvl" -ge 3 ] && { tot=0; k=""; }
   [ "$lvl" -ge 4 ] && { m=$model_plain; e=""; only1=1; }
-  [ "$lvl" -ge 5 ] && { c=""; t=""; }
+  [ "$lvl" -ge 5 ] && { c=""; t=""; o=""; }
   build_limits "$ext" "$tot"
   [ "$lvl" -ge 6 ] && limits=()
   [ "$only1" = 1 ] && limits=("${limits[@]:0:1}")
@@ -294,6 +337,7 @@ render() {
   sec context && parts+=("$b")
   sec tokens  && parts+=("$t")
   sec cost    && parts+=("$k")
+  sec overhead && parts+=("$o")
   sec cache   && parts+=("$c")
   sec resets  && parts+=("${limits[@]}")
   line=""
