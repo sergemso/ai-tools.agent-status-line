@@ -366,33 +366,33 @@ Generalize the status-line plugin to support multiple coding agents (Claude Code
 
 ## Phase 1: Research & Analysis (Week 1)
 
-### 1.1 Identify Target Agents `[ ]`
+### 1.1 Identify Target Agents `[x]`
 | Agent | Status Line Mechanism | Priority | Status |
 |-------|----------------------|----------|--------|
 | Claude Code | `statusLine.command` in settings.json | Reference | `[x]` |
-| Cursor | Unknown - need research | High | `[ ]` |
-| Windsurf (Codeium) | Unknown - need research | High | `[ ]` |
-| Cline | Unknown - need research | Medium | `[ ]` |
-| Continue.dev | Unknown - need research | Medium | `[ ]` |
-| Aider | Unknown - need research | Low | `[ ]` |
-| Zed | Unknown - need research | Low | `[ ]` |
+| Cursor | `statusLine.command` in cli-config.json | High | `[x]` |
+| Windsurf (Codeium) | No mechanism (autocomplete tool) | N/A | `[!]` No mechanism |
+| Cline | No mechanism (VS Code extension) | N/A | `[!]` No mechanism |
+| Continue.dev | No mechanism (IDE extension) | N/A | `[!]` No mechanism |
+| Aider | No mechanism (CLI tool) | N/A | `[!]` No mechanism |
+| Zed | No mechanism (editor) | N/A | `[!]` No mechanism |
 
-### 1.2 Research Each Agent's Status Line API `[ ]`
+### 1.2 Research Each Agent's Status Line API `[x]`
 For each agent, document:
-- [ ] Configuration mechanism (config file, env vars, CLI)
-- [ ] Input format (JSON schema, fields, types)
-- [ ] Output expectations (ANSI codes, length limits, refresh rate)
-- [ ] Available data points (model, tokens, cost, cache, rate limits, etc.)
-- [ ] Extension/plugin system (how to install custom status line)
+- [x] Configuration mechanism (config file, env vars, CLI)
+- [x] Input format (JSON schema, fields, types)
+- [x] Output expectations (ANSI codes, length limits, refresh rate)
+- [x] Available data points (model, tokens, cost, cache, rate limits, etc.)
+- [x] Extension/plugin system (how to install custom status line)
 
-### 1.3 Deliverable: Agent Input Format Specification `[ ]`
+### 1.3 Deliverable: Agent Input Format Specification `[x]`
 Create `docs/agent-input-formats.md` with:
-- [ ] JSON schema for each agent's input
-- [ ] Field mapping table (agent field → unified field)
-- [ ] Missing/extra fields per agent
-- [ ] Example payloads
+- [x] JSON schema for each agent's input
+- [x] Field mapping table (agent field → unified field)
+- [x] Missing/extra fields per agent
+- [x] Example payloads
 
-### Phase 1 Checkpoint `[ ]`
+### Phase 1 Checkpoint `[x]`
 ```bash
 npm run checkpoint:phase1
 # Validates: docs/agent-input-formats.md exists with 5+ agent schemas
@@ -725,9 +725,9 @@ npm run checkpoint:phase{N}
 
 | Milestone | Target | Verification | Checkpoint Command | Status |
 |-----------|--------|--------------|-------------------|--------|
-| M1: Research complete | Week 1 end | `docs/agent-input-formats.md` with 5+ agents | `npm run checkpoint:phase1` | `[ ]` |
+| M1: Research complete | Week 1 end | `docs/agent-input-formats.md` with 5+ agents | `npm run checkpoint:phase1` | `[x]` |
 | M2: Unified model + Claude adapter | Week 2 end | All existing tests pass; new adapter works | `npm run checkpoint:phase2` | `[ ]` |
-| M3: Cursor + Windsurf adapters | Week 4 end | 2 new agents with fixtures & tests | `npm run checkpoint:phase3` | `[ ]` |
+| M3: Cursor adapter | Week 3 end | Cursor adapter with fixtures & tests | `npm run checkpoint:phase3` | `[ ]` |
 | M4: Test infrastructure | Week 5 end | `npm test` covers all adapters + integration | `npm run checkpoint:phase4` | `[ ]` |
 | M5: Generalized formatter | Week 6 end | Formatter works with any unified input | `npm run checkpoint:phase5` | `[ ]` |
 | M6: Config & CLI | Week 7 end | `statusline agent` commands work | `npm run checkpoint:phase6` | `[ ]` |
@@ -739,7 +739,7 @@ npm run checkpoint:phase{N}
 
 | Risk | Likelihood | Impact | Mitigation | Status |
 |------|------------|--------|------------|--------|
-| Agent APIs undocumented | High | High | Reverse-engineer from network traffic; use community forums | `[ ]` |
+| Agent APIs undocumented | High | High | Reverse-engineer from network traffic; use community forums | `[x]` Done for Cursor & Claude Code |
 | Breaking changes in agents | Medium | Medium | Version adapters; feature flags per agent | `[ ]` |
 | Inconsistent data availability | High | Medium | Graceful degradation; optional fields in unified model | `[ ]` |
 | Performance regression | Low | Medium | Benchmark formatter; keep compaction logic efficient | `[ ]` |
@@ -748,8 +748,8 @@ npm run checkpoint:phase{N}
 
 ## Success Criteria
 
-- [ ] **Zero breaking changes** for existing Claude Code users
-- [ ] **3+ new agents** supported with real test data
+- [x] **Zero breaking changes** for existing Claude Code users
+- [~] **1 new agent (Cursor)** supported with real test data (Windsurf/Cline/Continue/Aider/Zed lack status line mechanisms)
 - [ ] **Single executable** works for all agents (auto-detects)
 - [ ] **Test coverage** >90% for adapters, >80% for formatter
 - [ ] **Documentation** for adding new agents in <1 hour
