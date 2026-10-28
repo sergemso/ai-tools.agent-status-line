@@ -1,0 +1,1600 @@
+#!/usr/bin/env node
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// src/shared/constants.ts
+var DEFAULT_BASE_MODEL, DEFAULT_SECTIONS, DEFAULT_RESETS, DEFAULT_PRICES_TTL, DEFAULT_CONTEXT_WARN, DEFAULT_CONTEXT_CRIT, DEFAULT_CACHE_WARN, DEFAULT_CACHE_CRIT, DEFAULT_RESET_WARN, DEFAULT_RESET_CRIT, DEFAULT_WIDTH, DEFAULT_MARGIN, DEFAULT_FRESH_TOKENS, DEFAULT_SUMMARY_TOKENS, DEFAULT_OVERHEAD_WARN, DEFAULT_OVERHEAD_CRIT, ALL_SECTIONS, PRICING_URL, RETRY_AFTER_FAILURE, LOCK_STALE_AFTER, DURATION_UNITS, BLOCK_CHARS, LEFT_BORDER, RIGHT_BORDER, ALL_BLOCK_CHARS;
+var init_constants = __esm({
+  "src/shared/constants.ts"() {
+    "use strict";
+    DEFAULT_BASE_MODEL = "Claude Sonnet 5.5";
+    DEFAULT_SECTIONS = "model,context,cost,overhead,cache,resets";
+    DEFAULT_RESETS = "5h,7d,spend";
+    DEFAULT_PRICES_TTL = 3600;
+    DEFAULT_CONTEXT_WARN = 50;
+    DEFAULT_CONTEXT_CRIT = 80;
+    DEFAULT_CACHE_WARN = 20;
+    DEFAULT_CACHE_CRIT = 5;
+    DEFAULT_RESET_WARN = 50;
+    DEFAULT_RESET_CRIT = 80;
+    DEFAULT_WIDTH = 0;
+    DEFAULT_MARGIN = 2;
+    DEFAULT_FRESH_TOKENS = 25e3;
+    DEFAULT_SUMMARY_TOKENS = 8e3;
+    DEFAULT_OVERHEAD_WARN = 5;
+    DEFAULT_OVERHEAD_CRIT = 20;
+    ALL_SECTIONS = [
+      "model",
+      "context",
+      "tokens",
+      "cost",
+      "overhead",
+      "cache",
+      "stats",
+      "resets"
+    ];
+    PRICING_URL = "https://platform.claude.com/docs/en/about-claude/pricing.md";
+    RETRY_AFTER_FAILURE = 300;
+    LOCK_STALE_AFTER = 120;
+    DURATION_UNITS = [
+      { unit: "mo", seconds: 2592e3 },
+      // 30 days
+      { unit: "d", seconds: 86400 },
+      { unit: "h", seconds: 3600 },
+      { unit: "m", seconds: 60 },
+      { unit: "s", seconds: 1 }
+    ];
+    BLOCK_CHARS = ["\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"];
+    LEFT_BORDER = "\u2595";
+    RIGHT_BORDER = "\u258F";
+    ALL_BLOCK_CHARS = [...BLOCK_CHARS, LEFT_BORDER, RIGHT_BORDER];
+  }
+});
+
+// src/shared/prices.ts
+import { promises as fs2 } from "fs";
+import { join as join2, dirname as dirname2 } from "path";
+import { fileURLToPath as fileURLToPath2 } from "url";
+function getPricesPath(claudeConfigDir) {
+  return join2(claudeConfigDir, "model-prices.json");
+}
+async function loadPrices(claudeConfigDir, ttl = DEFAULT_PRICES_TTL) {
+  const path = getPricesPath(claudeConfigDir);
+  const now = Date.now();
+  if (pricesCache && now - pricesCache.mtime < ttl * 1e3) {
+    return pricesCache.table;
+  }
+  try {
+    const stat = await fs2.stat(path);
+    if (now - stat.mtimeMs < ttl * 1e3) {
+      const content = await fs2.readFile(path, "utf-8");
+      const table = JSON.parse(content);
+      pricesCache = { table, mtime: stat.mtimeMs };
+      return table;
+    }
+  } catch {
+  }
+  return { models: {} };
+}
+async function savePrices(claudeConfigDir, table) {
+  const path = getPricesPath(claudeConfigDir);
+  await ensureDir2(dirname2(path));
+  const tmp = `${path}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+  await fs2.writeFile(tmp, JSON.stringify({ models: table.models }), { mode: 420 });
+  await fs2.rename(tmp, path);
+  const stat = await fs2.stat(path);
+  pricesCache = { table, mtime: stat.mtimeMs };
+}
+function matchModelPrice(table, modelName, baseModel, fastMode) {
+  const models = table.models;
+  const base = models[baseModel]?.in;
+  if (!base || base === 0)
+    return null;
+  const candidates = [
+    modelName,
+    `Claude ${modelName}`,
+    modelName.toLowerCase(),
+    `claude ${modelName.toLowerCase()}`
+  ];
+  let matched;
+  for (const c of candidates) {
+    if (models[c]) {
+      matched = models[c];
+      break;
+    }
+  }
+  if (!matched)
+    return null;
+  const inputPrice = fastMode && matched.fast_in ? matched.fast_in : matched.in;
+  const multiplier = inputPrice / base * 10;
+  return Math.round(multiplier) / 10;
+}
+async function ensureDir2(dir) {
+  try {
+    await fs2.mkdir(dir, { recursive: true });
+  } catch {
+  }
+}
+var __filename2, __dirname2, pricesCache;
+var init_prices = __esm({
+  "src/shared/prices.ts"() {
+    "use strict";
+    init_constants();
+    __filename2 = fileURLToPath2(import.meta.url);
+    __dirname2 = dirname2(__filename2);
+    pricesCache = null;
+  }
+});
+
+// src/utils/http.ts
+async function fetchWithTimeout(url, options = {}) {
+  const { timeout = 2e4, headers = {} } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "claude-code-status-line/1.0",
+        ...headers
+      }
+    });
+    clearTimeout(timeoutId);
+    return {
+      ok: response.ok,
+      status: response.status,
+      text: () => response.text(),
+      json: () => response.json()
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Request timeout after ${timeout}ms`);
+    }
+    throw error;
+  }
+}
+var init_http = __esm({
+  "src/utils/http.ts"() {
+    "use strict";
+  }
+});
+
+// src/utils/fs.ts
+import { promises as fs3 } from "fs";
+import { dirname as dirname3 } from "path";
+import { fileURLToPath as fileURLToPath3 } from "url";
+async function atomicWrite(path, content, mode = 420) {
+  await ensureDir3(dirname3(path));
+  const tmp = `${path}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+  await fs3.writeFile(tmp, content, { mode });
+  await fs3.rename(tmp, path);
+}
+async function tryLock(lockPath, staleAfterMs = 12e4) {
+  try {
+    try {
+      const stat = await fs3.stat(lockPath);
+      if (Date.now() - stat.mtimeMs > staleAfterMs) {
+        await fs3.rmdir(lockPath);
+      }
+    } catch {
+    }
+    await fs3.mkdir(lockPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function releaseLock(lockPath) {
+  try {
+    await fs3.rmdir(lockPath);
+  } catch {
+  }
+}
+async function getMtime(path) {
+  try {
+    const stat = await fs3.stat(path);
+    return stat.mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+async function ensureDir3(dir) {
+  try {
+    await fs3.mkdir(dir, { recursive: true });
+  } catch {
+  }
+}
+var __filename3, __dirname3;
+var init_fs = __esm({
+  "src/utils/fs.ts"() {
+    "use strict";
+    __filename3 = fileURLToPath3(import.meta.url);
+    __dirname3 = dirname3(__filename3);
+  }
+});
+
+// dist/refresh-prices.js
+var refresh_prices_exports = {};
+__export(refresh_prices_exports, {
+  refreshPrices: () => refreshPrices
+});
+import { join as join4 } from "path";
+import { promises as fs4 } from "fs";
+async function refreshPrices(claudeConfigDir, ttl = 3600) {
+  const pricesPath = getPricesPath(claudeConfigDir);
+  const lockPath = join4(claudeConfigDir, ".model-prices.lock.d");
+  const failPath = join4(claudeConfigDir, ".model-prices.fail");
+  try {
+    const stat = await fs4.stat(lockPath);
+    if (Date.now() - stat.mtimeMs > LOCK_STALE_AFTER) {
+      await fs4.rmdir(lockPath);
+    }
+  } catch {
+  }
+  const lockAcquired = await tryLock(lockPath, LOCK_STALE_AFTER);
+  if (!lockAcquired)
+    return;
+  try {
+    const age = await getMtime(pricesPath);
+    if (age > 0 && Date.now() - age < ttl * 1e3)
+      return;
+    const failAge = await getMtime(failPath);
+    if (failAge > 0 && Date.now() - failAge < RETRY_AFTER_FAILURE * 1e3)
+      return;
+    const response = await fetchWithTimeout(PRICING_URL, { timeout: 2e4 });
+    if (!response.ok)
+      throw new Error(`HTTP ${response.status}`);
+    const html = await response.text();
+    const rows = parsePricingPage(html);
+    if (rows.length < 3)
+      throw new Error("Insufficient price data parsed");
+    const models = {};
+    for (const row of rows) {
+      if (row.type === "M" && row.in != null && row.out != null) {
+        if (!models[row.name]) {
+          models[row.name] = { in: row.in, out: row.out };
+        }
+      }
+    }
+    for (const row of rows) {
+      if (row.type === "F" && row.fast_in != null) {
+        if (models[row.name]) {
+          models[row.name].fast_in = row.fast_in;
+        }
+      }
+    }
+    const table = { models };
+    await savePrices(claudeConfigDir, table);
+    await fs4.unlink(failPath).catch(() => {
+    });
+  } catch (error) {
+    await atomicWrite(failPath, "");
+    console.error("Price refresh failed:", error);
+  } finally {
+    await releaseLock(lockPath);
+  }
+}
+function parsePricingPage(html) {
+  const rows = [];
+  let mode = 0;
+  let rowCount = 0;
+  const lines = html.split("\n");
+  for (const line of lines) {
+    if (!mode && line.includes("Base input tokens")) {
+      mode = 1;
+      rowCount = 0;
+      continue;
+    }
+    if (!mode && line.includes("provides significantly faster")) {
+      mode = 2;
+      rowCount = 0;
+      continue;
+    }
+    if (mode && line.trim().startsWith("|")) {
+      rowCount++;
+      if (rowCount <= 2)
+        continue;
+      const cells = line.split("|").map((c) => c.trim()).filter((c) => c);
+      if (cells.length < 3)
+        continue;
+      if (mode === 1) {
+        const name = cells[1].replace(/ \(.*$/, "");
+        const inPrice = extractPrice(cells[2]);
+        const outPrice = extractPrice(cells[cells.length - 2]);
+        if (inPrice != null && outPrice != null) {
+          rows.push({ type: "M", name, in: inPrice, out: outPrice });
+        }
+      } else if (mode === 2) {
+        const fastPrice = extractPrice(cells[2]);
+        if (fastPrice != null) {
+          const names = cells[1].split(" / ").map((n) => n.trim());
+          for (const n of names) {
+            rows.push({ type: "F", name: n, fast_in: fastPrice });
+          }
+        }
+      }
+      continue;
+    }
+    if (mode && rowCount > 0 && !line.trim().startsWith("|")) {
+      mode = 0;
+    }
+  }
+  return rows;
+}
+function extractPrice(text) {
+  const match = text.match(/\$([0-9.]+)/);
+  return match ? parseFloat(match[1]) : null;
+}
+var init_refresh_prices = __esm({
+  "dist/refresh-prices.js"() {
+    "use strict";
+    init_http();
+    init_fs();
+    init_prices();
+    init_constants();
+  }
+});
+
+// dist/statusline.js
+init_constants();
+import { join as join5 } from "path";
+import { fileURLToPath as fileURLToPath4 } from "url";
+
+// src/shared/colors.ts
+var RESET = "\x1B[0m";
+var DIM = "\x1B[2m";
+var CYAN = "\x1B[36m";
+var GREEN = "\x1B[32m";
+var YELLOW = "\x1B[33m";
+var RED = "\x1B[31m";
+function dim(text) {
+  return `${DIM}${text}${RESET}`;
+}
+function cyan(text) {
+  return `${CYAN}${text}${RESET}`;
+}
+function green(text) {
+  return `${GREEN}${text}${RESET}`;
+}
+function yellow(text) {
+  return `${YELLOW}${text}${RESET}`;
+}
+function red(text) {
+  return `${RED}${text}${RESET}`;
+}
+
+// src/shared/formatting.ts
+init_constants();
+function fmtDur(seconds) {
+  let s = Math.max(0, Math.floor(seconds));
+  let out = "";
+  let parts = 0;
+  let started = false;
+  for (const { unit, seconds: unitSecs } of DURATION_UNITS) {
+    const n = Math.floor(s / unitSecs);
+    s = s % unitSecs;
+    if (started || n > 0) {
+      started = true;
+      parts++;
+      out += (out ? " " : "") + n + unit;
+      if (parts >= 2)
+        break;
+    }
+  }
+  return out || "0s";
+}
+function fmtTok(n) {
+  if (n >= 1e6) {
+    return `${Math.floor(n / 1e6)}.${Math.floor(n % 1e6 / 1e5)}M`;
+  }
+  if (n >= 1e4) {
+    return `${Math.floor(n / 1e3)}k`;
+  }
+  if (n >= 1e3) {
+    return `${Math.floor(n / 1e3)}.${Math.floor(n % 1e3 / 100)}k`;
+  }
+  return String(n);
+}
+function money(dollars) {
+  const c = dollars * 100;
+  if (c < 1)
+    return "<1\xA2";
+  if (c < 100)
+    return `${Math.round(c)}\xA2`;
+  return `$${dollars.toFixed(2)}`;
+}
+
+// src/shared/terminal.ts
+init_constants();
+import { spawn } from "child_process";
+async function detectCols() {
+  try {
+    const result = await runCommand("stty", ["size"]);
+    if (result.code === 0 && result.stdout) {
+      const cols = parseInt(result.stdout.trim().split(" ")[1], 10);
+      if (!isNaN(cols) && cols > 0)
+        return cols;
+    }
+  } catch {
+  }
+  let pid = process.pid;
+  for (let i = 0; i < 8; i++) {
+    try {
+      const ppidResult = await runCommand("ps", ["-o", "ppid=", "-p", String(pid)]);
+      if (ppidResult.code !== 0 || !ppidResult.stdout.trim())
+        break;
+      pid = parseInt(ppidResult.stdout.trim(), 10);
+      if (pid <= 1)
+        break;
+      const ttyResult = await runCommand("ps", ["-o", "tty=", "-p", String(pid)]);
+      if (ttyResult.code !== 0)
+        continue;
+      const tty = ttyResult.stdout.trim();
+      if (!tty || tty === "?" || tty === "??" || tty === "-")
+        continue;
+      try {
+        const sttyResult = await runCommand("stty", ["size", "-F", `/dev/${tty}`]);
+        if (sttyResult.code === 0 && sttyResult.stdout) {
+          const cols = parseInt(sttyResult.stdout.trim().split(" ")[1], 10);
+          if (!isNaN(cols) && cols > 0)
+            return cols;
+        }
+      } catch {
+      }
+    } catch {
+      continue;
+    }
+  }
+  return 0;
+}
+function visibleWidth(str) {
+  let t = str.replace(/\x1b\[[0-9;]*m/g, "");
+  for (const ch of ALL_BLOCK_CHARS) {
+    t = t.split(ch).join("x");
+  }
+  return t.length;
+}
+function runCommand(cmd, args) {
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, { shell: false });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => stdout += d.toString());
+    child.stderr.on("data", (d) => stderr += d.toString());
+    child.on("close", (code) => resolve({ code: code ?? 0, stdout, stderr }));
+    child.on("error", (err) => resolve({ code: 1, stdout, stderr: err.message }));
+  });
+}
+
+// src/shared/config-file.ts
+import { promises as fs } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+var __filename = fileURLToPath(import.meta.url);
+var __dirname = dirname(__filename);
+var configCache = null;
+function getConfigPath(claudeConfigDir) {
+  return join(claudeConfigDir, "statusline", "config");
+}
+async function loadConfig(claudeConfigDir) {
+  const path = getConfigPath(claudeConfigDir);
+  const data = {};
+  try {
+    const content = await fs.readFile(path, "utf-8");
+    for (const line of content.split("\n")) {
+      const idx = line.indexOf("=");
+      if (idx > 0) {
+        const key = line.slice(0, idx).trim();
+        const value = line.slice(idx + 1).trim();
+        if (key)
+          data[key] = value;
+      }
+    }
+  } catch {
+  }
+  configCache = { path, data };
+  return data;
+}
+function getSetting(data, key) {
+  return data[key];
+}
+async function putSetting(claudeConfigDir, key, value) {
+  const path = getConfigPath(claudeConfigDir);
+  await ensureDir(dirname(path));
+  const data = configCache?.data ?? await loadConfig(claudeConfigDir);
+  data[key] = value;
+  const tmp = `${path}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+  const lines = Object.entries(data).map(([k, v]) => `${k}=${v}`);
+  await fs.writeFile(tmp, lines.join("\n") + "\n", { mode: 420 });
+  await fs.rename(tmp, path);
+  configCache = { path, data };
+}
+async function putSettings(claudeConfigDir, entries) {
+  const path = getConfigPath(claudeConfigDir);
+  await ensureDir(dirname(path));
+  const data = configCache?.data ?? await loadConfig(claudeConfigDir);
+  for (const [key, value] of entries) {
+    data[key] = value;
+  }
+  const tmp = `${path}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+  const lines = Object.entries(data).map(([k, v]) => `${k}=${v}`);
+  await fs.writeFile(tmp, lines.join("\n") + "\n", { mode: 420 });
+  await fs.rename(tmp, path);
+  configCache = { path, data };
+}
+async function dropSettings(claudeConfigDir, keys) {
+  const path = getConfigPath(claudeConfigDir);
+  const data = configCache?.data ?? await loadConfig(claudeConfigDir);
+  for (const key of keys) {
+    delete data[key];
+  }
+  if (Object.keys(data).length === 0) {
+    try {
+      await fs.unlink(path);
+    } catch {
+    }
+    configCache = { path, data: {} };
+  } else {
+    const tmp = `${path}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+    const lines = Object.entries(data).map(([k, v]) => `${k}=${v}`);
+    await fs.writeFile(tmp, lines.join("\n") + "\n", { mode: 420 });
+    await fs.rename(tmp, path);
+    configCache = { path, data };
+  }
+}
+async function resetAllSettings(claudeConfigDir) {
+  const path = getConfigPath(claudeConfigDir);
+  try {
+    await fs.unlink(path);
+  } catch {
+  }
+  configCache = { path, data: {} };
+}
+async function ensureDir(dir) {
+  try {
+    await fs.mkdir(dir, { recursive: true });
+  } catch {
+  }
+}
+
+// dist/statusline.js
+init_prices();
+var __filename4 = fileURLToPath4(import.meta.url);
+var __dirname4 = join5(__filename4, "..");
+function getEnv(key) {
+  return process.env[key];
+}
+function getClaudeConfigDirFromEnv() {
+  return getEnv("CLAUDE_CONFIG_DIR") || join5(process.env.HOME || "~", ".claude");
+}
+async function loadSettings(claudeConfigDir) {
+  const config = await loadConfig(claudeConfigDir);
+  const get = (key, defaultValue) => {
+    const envKey = `STATUSLINE_${key}`;
+    const envVal = getEnv(envKey);
+    if (envVal !== void 0)
+      return envVal;
+    const configVal = getSetting(config, key);
+    if (configVal !== void 0)
+      return configVal;
+    return String(defaultValue);
+  };
+  const num = (key, defaultValue) => {
+    const v = get(key, defaultValue);
+    const parsed = parseInt(v, 10);
+    return isNaN(parsed) ? defaultValue : parsed;
+  };
+  return {
+    baseModel: get("BASE_MODEL", DEFAULT_BASE_MODEL),
+    sections: get("SECTIONS", DEFAULT_SECTIONS),
+    resets: get("RESETS", DEFAULT_RESETS),
+    pricesTtl: num("PRICES_TTL", DEFAULT_PRICES_TTL),
+    contextWarn: num("CONTEXT_WARN", DEFAULT_CONTEXT_WARN),
+    contextCrit: num("CONTEXT_CRIT", DEFAULT_CONTEXT_CRIT),
+    cacheWarn: num("CACHE_WARN", DEFAULT_CACHE_WARN),
+    cacheCrit: num("CACHE_CRIT", DEFAULT_CACHE_CRIT),
+    resetWarn: num("RESET_WARN", DEFAULT_RESET_WARN),
+    resetCrit: num("RESET_CRIT", DEFAULT_RESET_CRIT),
+    width: num("WIDTH", DEFAULT_WIDTH),
+    margin: num("MARGIN", DEFAULT_MARGIN),
+    dumpPath: get("DUMP", ""),
+    freshTokens: num("FRESH_TOKENS", DEFAULT_FRESH_TOKENS),
+    summaryTokens: num("SUMMARY_TOKENS", DEFAULT_SUMMARY_TOKENS),
+    overheadWarn: num("OVERHEAD_WARN", DEFAULT_OVERHEAD_WARN),
+    overheadCrit: num("OVERHEAD_CRIT", DEFAULT_OVERHEAD_CRIT)
+  };
+}
+function isSectionEnabled(sections, name) {
+  return sections.split(",").includes(name);
+}
+function parseInput(input) {
+  const data = JSON.parse(input);
+  const modelName = data.model.display_name;
+  const fastMode = data.fast_mode ?? false;
+  const effortLevel = data.effort?.level ?? "";
+  const usedPct = data.context_window.used_percentage ?? null;
+  const contextSize = data.context_window.context_window_size ?? null;
+  const tokIn = data.context_window.total_input_tokens ?? null;
+  const tokOut = data.context_window.total_output_tokens ?? null;
+  const costUsd = data.cost.total_cost_usd ?? null;
+  const cacheTtl = data.prompt_cache.ttl ?? null;
+  const cacheWarm = data.prompt_cache.warm ?? false;
+  const cacheExpiresAt = data.prompt_cache.expires_at ?? null;
+  const cacheHitRatio = data.prompt_cache.hit_ratio ?? null;
+  const cacheRecacheTokens = data.prompt_cache.recache_tokens_if_cold ?? null;
+  const rateLimits = parseRateLimits(data.rate_limits ?? {});
+  const customReset = parseCustomReset();
+  return {
+    model: modelName,
+    modelPlain: modelName,
+    fastMode,
+    effortLevel,
+    usedPct,
+    contextSize,
+    tokIn,
+    tokOut,
+    costUsd,
+    cacheTtl,
+    cacheWarm,
+    cacheExpiresAt,
+    cacheHitRatio,
+    cacheRecacheTokens,
+    rateLimits,
+    customReset
+  };
+}
+function parseRateLimits(rateLimits) {
+  const rows = [];
+  const nums = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    thirty: 30
+  };
+  const unitMap = {
+    hour: "h",
+    day: "d",
+    week: "w",
+    month: "mo"
+  };
+  for (const [key, value] of Object.entries(rateLimits)) {
+    if (!value || typeof value !== "object" || value.resets_at == null)
+      continue;
+    let alias = "";
+    let name = "";
+    let total = "";
+    const match = key.match(/^([a-z]+)_(hour|day|week|month)(?:_(.+))?$/);
+    if (key === "spend_limit") {
+      alias = "spend";
+      name = "";
+      total = { daily: "1d", weekly: "7d", monthly: "30d" }[value.period] || "?";
+    } else if (match && nums[match[1]]) {
+      const n = nums[match[1]];
+      const u = unitMap[match[2]];
+      total = `${n}${u}`;
+      alias = total;
+      if (match[3]) {
+        alias += `-${match[3].replace(/_/g, "-")}`;
+        name = match[3].replace(/_/g, " ");
+      }
+    } else {
+      alias = key;
+      name = key;
+    }
+    const pct = value.used_percentage != null ? Math.round(value.used_percentage) : null;
+    const resetsAt = value.resets_at;
+    rows.push({
+      key,
+      alias,
+      name,
+      pct: pct != null ? String(pct) : "-",
+      resets_at: String(resetsAt),
+      total
+    });
+  }
+  return rows;
+}
+function parseCustomReset() {
+  const custom = getEnv("STATUSLINE_CUSTOM_RESET");
+  if (!custom)
+    return null;
+  const [label, dateStr] = custom.split("|");
+  if (!label || !dateStr)
+    return null;
+  let timestamp;
+  try {
+    timestamp = new Date(dateStr).getTime();
+    if (isNaN(timestamp))
+      throw new Error();
+  } catch {
+    try {
+      timestamp = new Date(dateStr.replace(" ", "T")).getTime();
+      if (isNaN(timestamp))
+        throw new Error();
+    } catch {
+      return null;
+    }
+  }
+  return { label, timestamp: Math.floor(timestamp / 1e3) };
+}
+async function computeParts(parsed, settings, prices) {
+  const { model, modelPlain, fastMode, effortLevel, usedPct, contextSize, tokIn, tokOut, costUsd, cacheTtl, cacheWarm, cacheExpiresAt, cacheHitRatio, cacheRecacheTokens } = parsed;
+  let modelDisplay = model;
+  const mult = matchModelPrice(prices, model, settings.baseModel, fastMode);
+  if (mult !== null && mult !== 1) {
+    const m1 = mult.toFixed(1);
+    if (m1 !== "1.0") {
+      modelDisplay = `${modelPlain} x${m1.replace(/\.0$/, "")}`;
+    }
+  }
+  let effortDisplay = "";
+  switch (effortLevel) {
+    case "low":
+      effortDisplay = dim("lo");
+      break;
+    case "medium":
+      effortDisplay = green("med");
+      break;
+    case "high":
+      effortDisplay = yellow("hi");
+      break;
+    case "xhigh":
+      effortDisplay = red("xhi");
+      break;
+    case "max":
+      effortDisplay = red("max");
+      break;
+    default:
+      if (effortLevel)
+        effortDisplay = dim(effortLevel);
+  }
+  let contextBar = "";
+  let contextBarShort = "";
+  let pctUsed = 0;
+  if (usedPct !== null) {
+    pctUsed = Math.round(usedPct);
+    const blockIdx = Math.min(Math.floor(pctUsed / 12.5), 7);
+    const fill = BLOCK_CHARS[blockIdx];
+    let color = GREEN;
+    if (pctUsed >= settings.contextCrit)
+      color = RED;
+    else if (pctUsed >= settings.contextWarn)
+      color = YELLOW;
+    const ctxChar = `${color}${LEFT_BORDER}${fill}${RIGHT_BORDER}${RESET}`;
+    const ctxPct = `${color}${pctUsed}%${RESET}`;
+    const sizeStr = contextSize ? `${DIM}/${contextSize >= 1e6 ? Math.floor(contextSize / 1e6) + "M" : Math.floor(contextSize / 1e3) + "k"}${RESET}` : "";
+    contextBar = `${ctxChar} ${ctxPct}${sizeStr}`;
+    contextBarShort = `${ctxChar} ${ctxPct}`;
+  } else {
+    contextBar = `${DIM}(no context data)${RESET}`;
+    contextBarShort = contextBar;
+  }
+  let tokensDisplay = "";
+  if (tokIn !== null && tokOut !== null) {
+    tokensDisplay = `${fmtTok(tokIn + tokOut)} ${dim("tok")}`;
+  }
+  let costDisplay = "";
+  if (costUsd !== null) {
+    costDisplay = `${money(costUsd)} ${dim("sess")}`;
+  }
+  let cacheDisplay = "";
+  let cacheShortDisplay = "";
+  let cacheCold = false;
+  if (cacheTtl !== null) {
+    const statsEnabled = isSectionEnabled(settings.sections, "stats");
+    let stats = "";
+    if (cacheHitRatio !== null && (statsEnabled || cacheHitRatio < 0.8)) {
+      const sp = Math.round(cacheHitRatio * 100);
+      const scolor = sp < 80 ? RED : GREEN;
+      stats = ` ${scolor}${sp}%${RESET}`;
+    }
+    if (cacheWarm && cacheExpiresAt !== null) {
+      const now = Math.floor(Date.now() / 1e3);
+      const rem = cacheExpiresAt - now;
+      if (rem > 0) {
+        let ccolor = GREEN;
+        if (rem < settings.cacheWarn * 60)
+          ccolor = YELLOW;
+        if (rem < settings.cacheCrit * 60)
+          ccolor = RED;
+        let remMinutes = rem >= 60 ? Math.floor(rem / 60) * 60 : rem;
+        let ctime = fmtDur(remMinutes);
+        ctime = ctime.replace(/ 0s$/, "").replace(/ /g, "");
+        cacheDisplay = `${dim("\u23F1")} ${ccolor}${ctime}${RESET}`;
+      }
+    }
+    if (!cacheDisplay) {
+      cacheDisplay = red("\u23F1 cold");
+      cacheCold = true;
+    }
+    cacheShortDisplay = cacheDisplay;
+    cacheDisplay = `${cacheDisplay}${stats}`;
+  }
+  let overheadDisplay = "";
+  let overheadShortDisplay = "";
+  if (isSectionEnabled(settings.sections, "overhead") && cacheTtl !== null && cacheRecacheTokens !== null) {
+    const ctoks = cacheRecacheTokens;
+    if (ctoks > settings.freshTokens) {
+      const modelPrices = prices.models[model] || prices.models[`Claude ${model}`] || prices.models[model.toLowerCase()] || prices.models[`claude ${model.toLowerCase()}`];
+      if (modelPrices) {
+        const pin = fastMode && modelPrices.fast_in ? modelPrices.fast_in : modelPrices.in;
+        const pout = modelPrices.out;
+        const wmul = cacheTtl === 3600 ? 2 : 1.25;
+        const d = ctoks - settings.freshTokens;
+        const oCall = d * 0.1 * pin / 1e6;
+        const oCold = d * wmul * pin / 1e6;
+        const oBe = settings.freshTokens * wmul / (d * 0.1);
+        const oCompact = (ctoks * 0.1 * pin + settings.summaryTokens * pout + (settings.freshTokens + settings.summaryTokens) * wmul * pin) / 1e6;
+        const ocents = Math.round(oCall * 100);
+        let ocolor = GREEN;
+        if (ocents >= settings.overheadWarn)
+          ocolor = YELLOW;
+        if (ocents >= settings.overheadCrit)
+          ocolor = RED;
+        const be = Math.ceil(oBe);
+        const beDisplay = be < 1 ? 1 : be;
+        if (cacheCold) {
+          overheadShortDisplay = `${RED}cold +${money(oCold)}${RESET}`;
+          overheadDisplay = overheadShortDisplay;
+        } else {
+          overheadShortDisplay = `${ocolor}+${money(oCall)}/call${RESET}`;
+          overheadDisplay = `${overheadShortDisplay} ${dim(`new@${beDisplay}`)}`;
+        }
+        if (usedPct !== null && usedPct >= settings.contextCrit) {
+          const compactStr = ` ${dim("compact")} ${money(oCompact)}`;
+          overheadDisplay += compactStr;
+          overheadShortDisplay += compactStr;
+        }
+      }
+    }
+  }
+  return {
+    model: `${cyan(modelDisplay)}${effortDisplay ? ` ${effortDisplay}` : ""}`,
+    context: contextBar,
+    tokens: tokensDisplay,
+    cost: costDisplay,
+    overhead: overheadDisplay,
+    overheadShort: overheadShortDisplay,
+    cache: cacheDisplay,
+    cacheShort: cacheShortDisplay,
+    limits: [],
+    custom: parsed.customReset ? `${dim(parsed.customReset.label)} ${fmtDur(parsed.customReset.timestamp - Math.floor(Date.now() / 1e3))}` : null
+  };
+}
+function buildLimits(rateLimits, resetsSetting, showNamed, showTotal, resetWarn, resetCrit) {
+  const limits = [];
+  let want;
+  if (resetsSetting === "all") {
+    want = rateLimits.map((r) => r.key);
+  } else if (resetsSetting === "none") {
+    want = [];
+  } else {
+    want = resetsSetting.split(",").map((s) => s.trim());
+  }
+  for (const tok of want) {
+    if (tok === "none")
+      continue;
+    for (const row of rateLimits) {
+      if (tok !== row.key && tok !== row.alias)
+        continue;
+      if (row.name && !showNamed)
+        continue;
+      let namePart = "";
+      if (row.name)
+        namePart = `${dim(row.name)} `;
+      let pctPart = "";
+      if (row.pct !== "-") {
+        const rpct = parseInt(row.pct, 10);
+        let lcolor = GREEN;
+        if (rpct >= resetCrit)
+          lcolor = RED;
+        else if (rpct >= resetWarn)
+          lcolor = YELLOW;
+        pctPart = `${lcolor}${rpct}%${RESET} `;
+      }
+      let totPart = "";
+      if (showTotal && row.total !== "-") {
+        totPart = ` ${dim(`/ ${row.total}`)}`;
+      }
+      const now = Math.floor(Date.now() / 1e3);
+      const left = parseInt(row.resets_at, 10) - now;
+      limits.push(`${namePart}${pctPart}${fmtDur(left)}${totPart}`);
+    }
+  }
+  return limits;
+}
+function render(parts, settings, level, rateLimits, customReset) {
+  const sep = `${DIM} | ${RESET}`;
+  const showNamed = level < 1;
+  let showTotal = level < 3;
+  const onlyFirstWindow = level >= 4;
+  let modelPart = parts.model;
+  let contextPart = parts.context;
+  let cachePart = parts.cache;
+  let overheadPart = parts.overhead;
+  let costPart = parts.cost;
+  let tokensPart = parts.tokens;
+  let customPart = parts.custom;
+  if (level >= 1) {
+    contextPart = parts.context.split(" ")[0] + " " + parts.context.split(" ")[1];
+    customPart = null;
+  }
+  if (level >= 2) {
+    cachePart = parts.cacheShort;
+    overheadPart = parts.overheadShort;
+  }
+  if (level >= 3) {
+    showTotal = false;
+    costPart = "";
+  }
+  if (level >= 4) {
+    modelPart = cyan(parts.model.split(" x")[0]);
+  }
+  if (level >= 5) {
+    cachePart = "";
+    tokensPart = "";
+    overheadPart = "";
+  }
+  if (level >= 6) {
+  }
+  let limits = buildLimits(rateLimits, settings.resets, showNamed, showTotal, settings.resetWarn, settings.resetCrit);
+  if (onlyFirstWindow) {
+    limits = limits.slice(0, 1);
+  }
+  if (level === 0 && customPart) {
+    limits.push(customPart);
+  }
+  const enabledSections = settings.sections.split(",");
+  const outputParts = [];
+  if (enabledSections.includes("model"))
+    outputParts.push(modelPart);
+  if (enabledSections.includes("context")) {
+    if (enabledSections.includes("overhead")) {
+      outputParts.push(`${contextPart}${overheadPart ? ` ${overheadPart}` : ""}`);
+    } else {
+      outputParts.push(contextPart);
+    }
+  } else if (enabledSections.includes("overhead")) {
+    outputParts.push(overheadPart);
+  }
+  if (enabledSections.includes("tokens"))
+    outputParts.push(tokensPart);
+  if (enabledSections.includes("cost"))
+    outputParts.push(costPart);
+  if (enabledSections.includes("cache"))
+    outputParts.push(cachePart);
+  if (enabledSections.includes("resets"))
+    outputParts.push(...limits);
+  return outputParts.filter((p) => p).join(sep);
+}
+async function generateStatusLine(input) {
+  const claudeConfigDir = getClaudeConfigDirFromEnv();
+  const settings = await loadSettings(claudeConfigDir);
+  const parsed = parseInput(input);
+  if (settings.dumpPath) {
+    try {
+      const { promises: fs6 } = await import("fs");
+      await fs6.writeFile(settings.dumpPath, input);
+    } catch {
+    }
+  }
+  const prices = await loadPrices(claudeConfigDir, settings.pricesTtl);
+  const pricesPath = join5(claudeConfigDir, "model-prices.json");
+  try {
+    const stat = await import("fs").then((fs6) => fs6.promises.stat(pricesPath));
+    const age = Date.now() - stat.mtimeMs;
+    if (age >= settings.pricesTtl * 1e3) {
+      Promise.resolve().then(() => (init_refresh_prices(), refresh_prices_exports)).then(({ refreshPrices: refreshPrices2 }) => {
+        refreshPrices2(claudeConfigDir, settings.pricesTtl).catch(() => {
+        });
+      });
+    }
+  } catch {
+    Promise.resolve().then(() => (init_refresh_prices(), refresh_prices_exports)).then(({ refreshPrices: refreshPrices2 }) => {
+      refreshPrices2(claudeConfigDir, settings.pricesTtl).catch(() => {
+      });
+    });
+  }
+  const parts = await computeParts(parsed, settings, prices);
+  let cols = settings.width;
+  if (cols === 0) {
+    cols = await detectCols();
+  }
+  let level = 0;
+  let line = render(parts, settings, level, parsed.rateLimits, parsed.customReset);
+  if (cols > 0) {
+    while (visibleWidth(line) > cols - settings.margin && level < 6) {
+      level++;
+      line = render(parts, settings, level, parsed.rateLimits, parsed.customReset);
+    }
+  }
+  if (settings.dumpPath) {
+    try {
+      const { promises: fs6 } = await import("fs");
+      await fs6.appendFile(settings.dumpPath, `
+cols=${cols} margin=${settings.margin} level=${level} visible=${visibleWidth(line)}`);
+    } catch {
+    }
+  }
+  return line;
+}
+
+// dist/config.js
+init_constants();
+import { fileURLToPath as fileURLToPath5 } from "url";
+init_prices();
+
+// src/utils/config-utils.ts
+import { join as join6 } from "path";
+function getClaudeConfigDir() {
+  return process.env.CLAUDE_CONFIG_DIR || join6(process.env.HOME || "~", ".claude");
+}
+
+// dist/config.js
+var __filename5 = fileURLToPath5(import.meta.url);
+function parseArgs(argv) {
+  if (argv.length === 0)
+    return { command: "help", args: [] };
+  return { command: argv[0], args: argv.slice(1) };
+}
+function usage() {
+  console.log(`Usage: config <command>
+  show                          current settings (value, and where it comes from)
+  model [NAME|list]             base model for the price multiplier (x1.0); no NAME = show
+  sections [list]               enabled/hidden sections and the valid names
+  sections show|hide NAME...    enable/disable sections
+  sections only NAME...         enable just these
+  sections all                  enable all
+      NAME: model context tokens cost overhead cache stats resets   (overhead = extra cost of continuing vs a fresh session; stats = always show the cache hit rate (default: only when below 80%))
+  resets LIST|all|none          which reset windows to show, e.g. 5h,7d,spend
+  thresholds context|resets WARN CRIT   yellow/red at WARN/CRIT percent used (0-100)
+  thresholds cache WARN CRIT            yellow/red when WARN/CRIT minutes are left
+  thresholds overhead WARN CRIT         yellow/red at WARN/CRIT extra cents per call vs a fresh session
+  overhead [FRESH [SUMMARY]]    token sizes for the overhead metric: a fresh session (25000), a compaction summary (8000)
+  width [N|auto]                terminal columns to fit the line into (auto = detect from the tty)
+  margin N                      columns kept free at the right edge (default 2)
+  dump [PATH|off]               write the raw status-line JSON + detected width/level to PATH on each run
+  reset [KEY...]                drop saved settings (all if none given)
+      KEY: BASE_MODEL SECTIONS RESETS CONTEXT_WARN CONTEXT_CRIT CACHE_WARN CACHE_CRIT RESET_WARN RESET_CRIT WIDTH MARGIN DUMP FRESH_TOKENS SUMMARY_TOKENS OVERHEAD_WARN OVERHEAD_CRIT`);
+}
+function die(msg) {
+  console.error(`error: ${msg}`);
+  process.exit(1);
+}
+function isInt(s) {
+  return /^\d+$/.test(s);
+}
+function currentSections(config) {
+  const v = config.SECTIONS;
+  return v ? v : ALL_SECTIONS.join(",");
+}
+function validSection(s) {
+  return ALL_SECTIONS.includes(s);
+}
+async function cmdShow(claudeConfigDir) {
+  const config = await loadConfig(claudeConfigDir);
+  const pricesPath = getPricesPath(claudeConfigDir);
+  const defaults = [
+    ["BASE_MODEL", DEFAULT_BASE_MODEL],
+    ["SECTIONS", DEFAULT_SECTIONS],
+    ["RESETS", DEFAULT_RESETS],
+    ["CONTEXT_WARN", String(DEFAULT_CONTEXT_WARN)],
+    ["CONTEXT_CRIT", String(DEFAULT_CONTEXT_CRIT)],
+    ["CACHE_WARN", String(DEFAULT_CACHE_WARN)],
+    ["CACHE_CRIT", String(DEFAULT_CACHE_CRIT)],
+    ["RESET_WARN", String(DEFAULT_RESET_WARN)],
+    ["RESET_CRIT", String(DEFAULT_RESET_CRIT)],
+    ["WIDTH", `${DEFAULT_WIDTH}(auto)`],
+    ["MARGIN", String(DEFAULT_MARGIN)],
+    ["FRESH_TOKENS", String(DEFAULT_FRESH_TOKENS)],
+    ["SUMMARY_TOKENS", String(DEFAULT_SUMMARY_TOKENS)],
+    ["OVERHEAD_WARN", String(DEFAULT_OVERHEAD_WARN)],
+    ["OVERHEAD_CRIT", String(DEFAULT_OVERHEAD_CRIT)]
+  ];
+  console.log("setting         value                                    source");
+  for (const [key, def] of defaults) {
+    const envKey = `STATUSLINE_${key}`;
+    let value;
+    let source;
+    if (process.env[envKey] !== void 0) {
+      value = process.env[envKey];
+      source = `env ${envKey}`;
+    } else if (key in config) {
+      value = config[key] ?? def;
+      source = "saved";
+    } else {
+      value = def;
+      source = "default";
+    }
+    console.log(`${key.padEnd(14)} ${value.padEnd(38)} ${source}`);
+  }
+  console.log(`file: ${getConfigPath(claudeConfigDir)}`);
+}
+async function cmdModel(claudeConfigDir, args) {
+  const prices = await loadPrices(claudeConfigDir);
+  const config = await loadConfig(claudeConfigDir);
+  const pricesPath = getPricesPath(claudeConfigDir);
+  if (args[0] === "list") {
+    if (!prices.models || Object.keys(prices.models).length === 0) {
+      die(`no price table yet (${pricesPath}); open a session and wait a moment, then retry`);
+    }
+    for (const [name, p] of Object.entries(prices.models)) {
+      console.log(`${name}  (in $${p.in}/MTok)`);
+    }
+    return;
+  }
+  if (args.length === 0) {
+    const v = config.BASE_MODEL;
+    console.log(`base model: ${v || `${DEFAULT_BASE_MODEL} (default)`}`);
+    return;
+  }
+  const want = args.join(" ");
+  if (!prices.models || Object.keys(prices.models).length === 0) {
+    die(`no price table yet (${pricesPath}); cannot validate '${want}'`);
+  }
+  const lowerWant = want.toLowerCase();
+  let matched;
+  for (const name of Object.keys(prices.models)) {
+    const lowerName = name.toLowerCase();
+    if (lowerName === lowerWant || lowerName === `claude ${lowerWant}`) {
+      matched = name;
+      break;
+    }
+  }
+  if (!matched) {
+    console.error(`error: unknown model '${want}'. Known:`);
+    for (const name of Object.keys(prices.models)) {
+      console.error(name);
+    }
+    process.exit(1);
+  }
+  await putSetting(claudeConfigDir, "BASE_MODEL", matched);
+  console.log(`base model: ${matched}`);
+}
+function sectionsStatus(config) {
+  const cur = currentSections(config).split(",");
+  let hidden = "";
+  for (const s of ALL_SECTIONS) {
+    if (!cur.includes(s))
+      hidden += ` ${s}`;
+  }
+  console.log(`enabled: ${cur.join(" ")}`);
+  console.log(`hidden: ${hidden || " (none)"}`);
+  console.log(`names:   ${ALL_SECTIONS.join(" ")}   (stats = always show the cache hit rate (default: only when below 80%))`);
+  console.log(`change:  sections show|hide|only NAME...   or   sections all`);
+}
+async function saveSections(claudeConfigDir, enabled) {
+  const config = await loadConfig(claudeConfigDir);
+  const before = currentSections(config);
+  const out = ALL_SECTIONS.filter((s) => enabled.includes(s)).join(",");
+  if (!out)
+    die("at least one section must stay enabled");
+  await putSetting(claudeConfigDir, "SECTIONS", out);
+  let hidden = "";
+  for (const s of ALL_SECTIONS) {
+    if (!enabled.includes(s))
+      hidden += ` ${s}`;
+  }
+  if (before === out) {
+    console.log(`no change (already: ${out})`);
+  } else {
+    console.log("sections updated");
+  }
+  console.log(`enabled: ${out.replace(/,/g, " ")}`);
+  console.log(`hidden: ${hidden || " (none)"}`);
+}
+async function cmdSections(claudeConfigDir, args) {
+  const config = await loadConfig(claudeConfigDir);
+  const cur = currentSections(config).split(",");
+  if (args.length === 0 || args[0] === "list" || args[0] === "status") {
+    sectionsStatus(config);
+    return;
+  }
+  const sub = args[0];
+  const names = args.slice(1);
+  for (const n of names) {
+    if (!validSection(n))
+      die(`unknown section '${n}' (one of: ${ALL_SECTIONS.join(", ")})`);
+  }
+  switch (sub) {
+    case "show":
+      await saveSections(claudeConfigDir, [...cur, ...names]);
+      break;
+    case "only":
+      await saveSections(claudeConfigDir, names);
+      break;
+    case "hide": {
+      const remaining = cur.filter((s) => !names.includes(s));
+      await saveSections(claudeConfigDir, remaining);
+      break;
+    }
+    case "all":
+      await dropSettings(claudeConfigDir, ["SECTIONS"]);
+      console.log("sections: all enabled");
+      break;
+    default:
+      die(`sections: expected show|hide|only NAME..., all or list, got '${sub}'`);
+  }
+}
+async function cmdResets(claudeConfigDir, args) {
+  const config = await loadConfig(claudeConfigDir);
+  if (args.length === 0) {
+    const v = config.RESETS;
+    console.log(`resets: ${v || `${DEFAULT_RESETS} (default)`}`);
+    return;
+  }
+  if (args.length !== 1)
+    die("resets: one comma-separated list, e.g. 5h,7d,spend");
+  const list = args[0];
+  if (/[^A-Za-z0-9_,-]/.test(list))
+    die("resets: use a comma list of window names, e.g. 5h,7d,spend");
+  await putSetting(claudeConfigDir, "RESETS", list);
+  console.log(`resets: ${list}`);
+  console.log("only the windows named here are shown (default: 5h,7d,spend; spend exists only on gateway accounts). Undo: reset RESETS");
+}
+async function cmdThresholds(claudeConfigDir, args) {
+  if (args.length < 3)
+    die("thresholds: expected context|resets|cache|overhead WARN CRIT");
+  const what = args[0];
+  const warn = parseInt(args[1], 10);
+  const crit = parseInt(args[2], 10);
+  if (isNaN(warn) || isNaN(crit))
+    die("thresholds: WARN and CRIT must be whole numbers");
+  let pre;
+  switch (what) {
+    case "context":
+      pre = "CONTEXT";
+      if (!(warn < crit && crit <= 100))
+        die("context: need WARN < CRIT <= 100");
+      break;
+    case "resets":
+      pre = "RESET";
+      if (!(warn < crit && crit <= 100))
+        die("resets: need WARN < CRIT <= 100");
+      break;
+    case "cache":
+      pre = "CACHE";
+      if (!(crit < warn))
+        die("cache: CRIT minutes must be lower than WARN (red comes later, as time runs out)");
+      break;
+    case "overhead":
+      pre = "OVERHEAD";
+      if (!(warn < crit))
+        die("overhead: need WARN < CRIT (cents per call)");
+      break;
+    default:
+      die("thresholds: expected context|resets|cache|overhead WARN CRIT");
+  }
+  await putSettings(claudeConfigDir, [
+    [`${pre}_WARN`, String(warn)],
+    [`${pre}_CRIT`, String(crit)]
+  ]);
+  const unit = what === "cache" ? " minutes left" : what === "overhead" ? " cents per call" : "%";
+  console.log(`${what}: yellow at ${warn}, red at ${crit}${unit}`);
+}
+async function cmdWidth(claudeConfigDir, args) {
+  const config = await loadConfig(claudeConfigDir);
+  if (args.length === 0) {
+    const v = config.WIDTH;
+    console.log(`width: ${v || "auto"}`);
+    return;
+  }
+  if (args[0] === "auto") {
+    await dropSettings(claudeConfigDir, ["WIDTH"]);
+    console.log("width: auto");
+    return;
+  }
+  if (!isInt(args[0]) || parseInt(args[0], 10) <= 0)
+    die("width: a positive number of columns, or auto");
+  await putSetting(claudeConfigDir, "WIDTH", args[0]);
+  console.log(`width: ${args[0]}`);
+}
+async function cmdMargin(claudeConfigDir, args) {
+  const config = await loadConfig(claudeConfigDir);
+  if (args.length === 0) {
+    const v = config.MARGIN;
+    console.log(`margin: ${v || `${DEFAULT_MARGIN} (default)`}`);
+    return;
+  }
+  if (!isInt(args[0]))
+    die("margin: a number of columns");
+  await putSetting(claudeConfigDir, "MARGIN", args[0]);
+  console.log(`margin: ${args[0]}`);
+}
+async function cmdOverhead(claudeConfigDir, args) {
+  const config = await loadConfig(claudeConfigDir);
+  if (args.length === 0) {
+    const fresh = config.FRESH_TOKENS || String(DEFAULT_FRESH_TOKENS);
+    const summary = config.SUMMARY_TOKENS || String(DEFAULT_SUMMARY_TOKENS);
+    console.log(`overhead: fresh ${fresh} summary ${summary} (empty = default ${DEFAULT_FRESH_TOKENS} / ${DEFAULT_SUMMARY_TOKENS})`);
+    return;
+  }
+  if (!isInt(args[0]) || parseInt(args[0], 10) <= 0)
+    die("overhead: FRESH must be a positive token count");
+  const entries = [["FRESH_TOKENS", args[0]]];
+  if (args[1]) {
+    if (!isInt(args[1]) || parseInt(args[1], 10) <= 0)
+      die("overhead: SUMMARY must be a positive token count");
+    entries.push(["SUMMARY_TOKENS", args[1]]);
+  }
+  await putSettings(claudeConfigDir, entries);
+  console.log(`overhead: fresh ${args[0]} summary ${args[1] || "unchanged"}`);
+}
+async function cmdDump(claudeConfigDir, args) {
+  const config = await loadConfig(claudeConfigDir);
+  if (args.length === 0) {
+    const v = config.DUMP;
+    console.log(`dump: ${v || "off"}`);
+    return;
+  }
+  if (args[0] === "off") {
+    await dropSettings(claudeConfigDir, ["DUMP"]);
+    console.log("dump: off");
+    return;
+  }
+  await putSetting(claudeConfigDir, "DUMP", args[0]);
+  console.log(`dump: ${args[0]}`);
+}
+async function cmdReset(claudeConfigDir, args) {
+  const validKeys = [
+    "BASE_MODEL",
+    "SECTIONS",
+    "RESETS",
+    "CONTEXT_WARN",
+    "CONTEXT_CRIT",
+    "CACHE_WARN",
+    "CACHE_CRIT",
+    "RESET_WARN",
+    "RESET_CRIT",
+    "WIDTH",
+    "MARGIN",
+    "DUMP",
+    "FRESH_TOKENS",
+    "SUMMARY_TOKENS",
+    "OVERHEAD_WARN",
+    "OVERHEAD_CRIT"
+  ];
+  if (args.length === 0) {
+    await resetAllSettings(claudeConfigDir);
+    console.log("all saved settings removed");
+  } else {
+    for (const k of args) {
+      if (!validKeys.includes(k))
+        die(`invalid key: ${k}`);
+    }
+    await dropSettings(claudeConfigDir, args);
+    console.log(`removed: ${args.join(" ")}`);
+  }
+}
+async function runConfig(argv) {
+  const claudeConfigDir = getClaudeConfigDir();
+  const { command, args } = parseArgs(argv);
+  switch (command) {
+    case "show":
+      await cmdShow(claudeConfigDir);
+      break;
+    case "model":
+      await cmdModel(claudeConfigDir, args);
+      break;
+    case "sections":
+      await cmdSections(claudeConfigDir, args);
+      break;
+    case "resets":
+      await cmdResets(claudeConfigDir, args);
+      break;
+    case "thresholds":
+      await cmdThresholds(claudeConfigDir, args);
+      break;
+    case "width":
+      await cmdWidth(claudeConfigDir, args);
+      break;
+    case "margin":
+      await cmdMargin(claudeConfigDir, args);
+      break;
+    case "overhead":
+      await cmdOverhead(claudeConfigDir, args);
+      break;
+    case "dump":
+      await cmdDump(claudeConfigDir, args);
+      break;
+    case "reset":
+      await cmdReset(claudeConfigDir, args);
+      break;
+    case "help":
+    case "-h":
+    case "--help":
+    case "":
+      usage();
+      break;
+    default:
+      usage();
+      process.exit(1);
+  }
+}
+
+// dist/index.js
+init_refresh_prices();
+
+// dist/install.js
+import { join as join7 } from "path";
+import { promises as fs5 } from "fs";
+import { fileURLToPath as fileURLToPath6 } from "url";
+var __filename6 = fileURLToPath6(import.meta.url);
+var __dirname5 = join7(__filename6, "..");
+async function copyScripts(srcDir, destDir) {
+  await fs5.mkdir(destDir, { recursive: true });
+  const isBundled = __filename6.includes("/bin/statusline") || __filename6.includes("\\bin\\statusline");
+  if (isBundled) {
+    const executable = join7(__dirname5, "statusline");
+    const dest = join7(destDir, "statusline");
+    try {
+      await fs5.copyFile(executable, dest);
+      await fs5.chmod(dest, 493);
+    } catch {
+      console.warn("Could not find compiled executable, skipping copy");
+    }
+  } else {
+    const jsScripts = ["statusline.js", "config.js", "refresh-prices.js"];
+    for (const script of jsScripts) {
+      const src = join7(__dirname5, "..", "dist", script);
+      const dest = join7(destDir, script.replace(".js", ""));
+      try {
+        await fs5.copyFile(src, dest);
+        await fs5.chmod(dest, 493);
+      } catch {
+      }
+    }
+  }
+}
+async function configureSettings(claudeConfigDir, destDir, options) {
+  const settingsPath = join7(claudeConfigDir, "settings.json");
+  const executablePath = join7(destDir, "statusline");
+  const cmd = `node ${executablePath}`;
+  try {
+    await fs5.access(settingsPath);
+  } catch {
+    await fs5.writeFile(settingsPath, "{}");
+  }
+  const content = await fs5.readFile(settingsPath, "utf-8");
+  const settings = JSON.parse(content);
+  const currentCmd = settings.statusLine?.command;
+  if (currentCmd && currentCmd !== cmd && !options.force) {
+    console.log(`statusLine already set to: ${currentCmd} (re-run with --force to replace)`);
+    return;
+  }
+  settings.statusLine = {
+    type: "command",
+    command: cmd,
+    refreshInterval: options.interval
+  };
+  const tmp = `${settingsPath}.${Date.now()}.tmp`;
+  await fs5.writeFile(tmp, JSON.stringify(settings, null, 2));
+  await fs5.rename(tmp, settingsPath);
+  console.log(`statusLine set to: ${cmd} (refresh every ${options.interval}s)`);
+}
+async function install(options) {
+  const claudeConfigDir = getClaudeConfigDir();
+  const destDir = join7(claudeConfigDir, "statusline");
+  const srcDir = join7(__dirname5, "..", "src");
+  await copyScripts(srcDir, destDir);
+  if (options.configure) {
+    await configureSettings(claudeConfigDir, destDir, options);
+  }
+}
+
+// dist/index.js
+function parseArgs2(argv) {
+  if (argv.length === 0)
+    return { command: "statusline", args: [] };
+  return { command: argv[0], args: argv.slice(1) };
+}
+async function main() {
+  const argv = process.argv.slice(2);
+  const { command, args } = parseArgs2(argv);
+  switch (command) {
+    case "statusline": {
+      const chunks = [];
+      for await (const chunk of process.stdin) {
+        chunks.push(chunk);
+      }
+      const input = Buffer.concat(chunks).toString("utf-8");
+      const line = await generateStatusLine(input);
+      console.log(line);
+      break;
+    }
+    case "config": {
+      await runConfig(args);
+      break;
+    }
+    case "refresh-prices": {
+      const claudeConfigDir = getClaudeConfigDir();
+      const ttl = parseInt(process.env.STATUSLINE_PRICES_TTL || "3600", 10);
+      await refreshPrices(claudeConfigDir, ttl);
+      break;
+    }
+    case "install": {
+      let configure = false;
+      let force = false;
+      let interval = 15;
+      for (let i = 0; i < args.length; i++) {
+        switch (args[i]) {
+          case "--configure":
+            configure = true;
+            break;
+          case "--force":
+            force = true;
+            break;
+          case "--interval":
+            interval = parseInt(args[++i], 10);
+            if (isNaN(interval) || interval <= 0) {
+              console.error("--interval needs a positive number of seconds");
+              process.exit(1);
+            }
+            break;
+          default:
+            console.error(`unknown option: ${args[i]}`);
+            process.exit(1);
+        }
+      }
+      if (configure) {
+        await install({ configure, force, interval });
+      }
+      break;
+    }
+    case "help":
+    case "-h":
+    case "--help":
+      console.log(`claude-code-status-line - TypeScript rewrite
+
+Usage: statusline <command> [args]
+
+Commands:
+  statusline          Generate status line (reads JSON from stdin)
+  config <subcommand> Manage settings
+  refresh-prices      Fetch and cache model prices
+  install             Install/copy scripts and optionally configure settings.json
+
+Config subcommands:
+  show                Show current settings
+  model [NAME|list]   Base model for price multiplier
+  sections ...        Show/hide sections
+  resets LIST         Which reset windows to show
+  thresholds ...      Yellow/red breakpoints
+  width [N|auto]      Terminal width
+  margin N            Right margin
+  overhead [FRESH [SUMMARY]]  Token sizes for overhead metric
+  dump [PATH|off]     Debug dump path
+  reset [KEY...]      Drop saved settings
+
+Install options:
+  --configure         Configure settings.json
+  --force             Replace existing statusLine
+  --interval SECONDS  Refresh interval (default 15)
+
+Run 'statusline config help' for detailed config help.`);
+      break;
+    default:
+      console.error(`Unknown command: ${command}`);
+      console.error("Run 'statusline help' for usage");
+      process.exit(1);
+  }
+}
+main().catch((err) => {
+  console.error("Error:", err);
+  process.exit(1);
+});
