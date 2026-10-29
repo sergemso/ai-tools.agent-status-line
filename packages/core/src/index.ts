@@ -7,6 +7,7 @@
  * - Built-in sections for common status line elements
  * - Layout engine with priority-based shrinking
  * - Renderer interface and implementations (CLI, VS Code, Neovim, OpenCode)
+ * - Configuration system for user customization
  */
 
 // Types and models
@@ -25,4 +26,4 @@ export * from "./renderers/index.js";
 export * from "./colors.js";
 
 // Configuration (Phase 5)
-// export { applyConfig, DEFAULT_CONFIG } from "./config.js";
+export * from "./config.js";

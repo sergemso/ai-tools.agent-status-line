@@ -150,7 +150,7 @@ interface Renderer<TOutput, TItemOutput = TOutput> {
 
 ## Phase 5: Configuration Integration
 
-### 5.1 User Config Schema `[ ]`
+### 5.1 User Config Schema `[x]`
 ```json
 {
   "sections": {
@@ -167,7 +167,7 @@ interface Renderer<TOutput, TItemOutput = TOutput> {
 }
 ```
 
-### 5.2 Config Application `[ ]`
+### 5.2 Config Application `[x]`
 ```typescript
 function applyConfig(sections: Section[], config: UserConfig): Section[] {
   // Enable/disable sections
@@ -180,7 +180,8 @@ function applyConfig(sections: Section[], config: UserConfig): Section[] {
 
 ### 5.3 Deliverables
 - `packages/core/src/config.ts` - Config types + application logic
-- Update `src/config.ts` (CLI) to use new schema
+- `packages/core/src/config.test.ts` - Comprehensive tests
+- Update `src/config.ts` (CLI) to use new schema (Phase 6)
 
 ---
 
