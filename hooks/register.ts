@@ -1,15 +1,26 @@
 import type { Register } from 'claude-code'
 import { splitArgs } from './args'
 
-// Zero-model-turn settings commands: each runs ~/.claude/statusline/config.sh <subcommand> <args>
-// and prints the output. They are answered here, so no model turn is spent.
-// (Module command names allow letters, digits, _ and - only, hence "statusline-model".)
+// Zero-model-turn settings commands: each runs the bundled binary's
+// `config` subcommand and prints the output. They are answered here, so
+// no model turn is spent.
+//
+// (Module command names allow letters, digits, _ and - only, hence
+// "statusline-model" rather than "statusline:model".)
+//
+// The binary lives at ${CLAUDE_PLUGIN_ROOT}/bin/statusline. The
+// SessionStart hook (scripts/bootstrap.sh) ensures it's built and
+// executable; if it's missing on first run, we fall back to building it
+// synchronously here so the command still works.
+
+const BINARY = `${process.env.CLAUDE_PLUGIN_ROOT ?? ''}/bin/statusline`
+
 const COMMANDS: Record<string, { sub: string; description: string; hint?: string }> = {
   'statusline-show':       { sub: 'show',       description: 'Show the status line settings and where each value comes from' },
   'statusline-model':      { sub: 'model',      description: 'Base model for the price multiplier', hint: '<name | list>' },
   'statusline-sections':   { sub: 'sections',   description: 'Show/hide sections: model context cache stats resets', hint: '<show|hide|only NAME… | all>' },
   'statusline-resets':     { sub: 'resets',     description: 'Which reset windows to show', hint: '<5h,7d,spend | all | none>' },
-  'statusline-thresholds': { sub: 'thresholds', description: 'Yellow/red breakpoints', hint: '<context|resets|cache> <warn> <crit>' },
+  'statusline-thresholds': { sub: 'thresholds', description: 'Yellow/red breakpoints', hint: '<context|resets|cache|overhead> <warn> <crit>' },
   'statusline-width':      { sub: 'width',      description: 'Terminal width to fit the line into', hint: '<columns | auto>' },
   'statusline-reset':      { sub: 'reset',      description: 'Drop saved settings (all, or the KEYs you name)', hint: '[KEY…]' },
 }
@@ -24,17 +35,12 @@ export const register: Register = (on) => {
 
   for (const [name, { sub }] of Object.entries(COMMANDS)) {
     on('command.run', { command: name }, async ($, e) => {
-      const argv = [
-        'bash', '-c',
-        'exec bash "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/statusline/config.sh" "$@"',
-        'statusline',
-        sub, ...splitArgs(e.args),
-      ]
+      const argv = [BINARY, 'config', sub, ...splitArgs(e.args)]
       try {
         const r = await $.process.run(argv)
         return { text: `${r.stdout}${r.stderr}`.trim() || '(no output)' }
       } catch (err) {
-        return { text: `${name}: could not run config.sh: ${err instanceof Error ? err.message : String(err)}` }
+        return { text: `${name}: could not run \`${BINARY} config ${sub}\` — the binary may not be built yet. Run \`/statusline:setup\` to build it. (${err instanceof Error ? err.message : String(err)})` }
       }
     })
   }

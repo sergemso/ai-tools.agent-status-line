@@ -12,7 +12,17 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k +1¢/call new@9 | $5.60 sess | ⏱ 25m | 12% 
 
 ## Quickstart
 
-Pick your agent — one command each:
+### Claude Code — via plugin marketplace (recommended)
+
+```
+/plugin marketplace add sergemso/claude-code-status-line
+/plugin install statusline@claude-code-status-line
+/statusline:setup
+```
+
+The first `/statusline:setup` builds the binary and wires up `~/.claude/settings.json`. A SessionStart hook keeps the binary in sync on updates — re-run `/plugin marketplace update` + `/reload-plugins`, no setup needed again. Restart Claude Code after the first install.
+
+### All agents — one-shot installers
 
 | Agent | One-shot install |
 |---|---|
@@ -53,7 +63,7 @@ The plugin auto-detects which coding agent is feeding it data and adapts the out
 
 | Agent | Status | How it works | Onboarding |
 |---|---|---|---|
-| **Claude Code** | ✅ Built-in | External command: Claude Code pipes JSON to stdin, plugin returns an ANSI string. Configured via `settings.json` `statusLine.command`. | one-shot script or `bin/statusline install --configure` |
+| **Claude Code** | ✅ Built-in | External command: Claude Code pipes JSON to stdin, plugin returns an ANSI string. Configured via `settings.json` `statusLine.command`. | **marketplace** (recommended) or one-shot script or `bin/statusline install --configure` |
 | **Cursor** | ✅ Built-in | Same external-command contract, with Cursor-specific fields (`render_width_chars`, `autorun`, `max_mode`, `param_summary`). | one-shot script, then add JSON snippet to Cursor settings |
 | **OpenCode** | ✅ Plugin (`@statusline/opencode-plugin`) | OpenCode v2 has no external-command contract; instead it loads in-process TUI plugins that claim a footer slot. TUI mode only — not ACP. | one-shot script, then add plugin path to `opencode.json` |
 
@@ -125,6 +135,14 @@ Run `opencode` (TUI mode) — the status line appears in the footer. **ACP mode 
 
 ### Updates
 
+**Via marketplace (Claude Code):**
+```
+/plugin marketplace update claude-code-status-line
+/reload-plugins
+```
+The SessionStart hook rebuilds the binary automatically on the next session.
+
+**Manual (all agents):**
 ```bash
 cd ~/.claude/claude-code-status-line   # or wherever you cloned
 git pull
