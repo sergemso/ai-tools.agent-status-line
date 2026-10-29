@@ -26,8 +26,26 @@
     "tui",
     "plugin"
   ],
-  "author": "",
+  "author": "S. Strebulaev",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sergemso/ai-tools.agent-status-line.git",
+    "directory": "packages/opencode-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/sergemso/ai-tools.agent-status-line/issues"
+  },
+  "homepage": "https://github.com/sergemso/ai-tools.agent-status-line/tree/main/packages/opencode-plugin#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "src/plugin.tsx"
+  ],
   "dependencies": {
     "@statusline/core": "^1.0.0"
   },

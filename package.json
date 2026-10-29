@@ -24,8 +24,20 @@
     "status-line",
     "plugin"
   ],
-  "author": "",
+  "author": "S. Strebulaev",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sergemso/ai-tools.agent-status-line.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sergemso/ai-tools.agent-status-line/issues"
+  },
+  "homepage": "https://github.com/sergemso/ai-tools.agent-status-line#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "dependencies": {
     "@statusline/core": "^1.0.0"
   },
