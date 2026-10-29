@@ -6,51 +6,121 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege — release job escalates below
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build core package
         run: npm run build:core
-      
+
       - name: Build CLI
         run: npm run build
-      
+
+      - name: Build opencode plugin
+        run: npm run build --workspace=@statusline/opencode-plugin
+
       - name: Run tests
         run: npm test
 
-  # Optional: Release on version tag
+      - name: Type-check (no emit)
+        run: npx tsc --noEmit
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true # eslint config not finalized yet
+
+  # Publish all packages to npm when a v* tag is pushed.
+  # Tags follow semver: v1.0.0, v1.1.0-rc.1, etc.
+  # All three packages (@statusline/core, @statusline/opencode-plugin, and
+  # the root claude-code-status-line CLI) are published together.
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # for npm provenance
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-      
+          cache: 'npm'
+
       - name: Install dependencies
         run: npm ci
-      
-      - name: Build
-        run: npm run build
-      
-      - name: Publish to npm
-        run: npm publish
+
+      - name: Build all packages
+        run: |
+          npm run build:core
+          npm run build
+          npm run build --workspace=@statusline/opencode-plugin
+
+      - name: Verify package versions match tag
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "Tag version: $TAG_VERSION"
+          for pkg in packages/core packages/opencode-plugin .; do
+            PKG_VERSION=$(node -p "require('./$pkg/package.json').version")
+            echo "  $pkg: $PKG_VERSION"
+            if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+              echo "ERROR: version mismatch in $pkg (expected $TAG_VERSION)"
+              exit 1
+            fi
+          done
+
+      - name: Publish @statusline/core
+        run: npm publish --workspace=@statusline/core --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @statusline/opencode-plugin
+        run: npm publish --workspace=@statusline/opencode-plugin --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish root CLI (claude-code-status-line)
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
