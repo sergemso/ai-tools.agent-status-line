@@ -39,7 +39,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@statusline/core": "^1.0.0"
+    "@statusline/core": "^1.0.0",
+    "@statusline/opencode-plugin": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

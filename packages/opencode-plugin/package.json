@@ -1,6 +1,6 @@
 {
   "name": "@statusline/opencode-plugin",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "OpenCode TUI plugin rendering a @statusline/core status line",
   "type": "module",
   "main": "dist/index.js",
@@ -50,10 +50,10 @@
     "@statusline/core": "^1.0.0"
   },
   "peerDependencies": {
-    "@opencode/client": ">=2.0.0",
-    "@opencode/plugin": ">=2.0.0",
-    "@opentui/solid": ">=1.0.0",
-    "solid-js": ">=1.8.0"
+    "@opencode/client": "*",
+    "@opencode/plugin": "*",
+    "@opentui/solid": "*",
+    "solid-js": "*"
   },
   "peerDependenciesMeta": {
     "@opencode/plugin": {
@@ -70,7 +70,6 @@
     }
   },
   "devDependencies": {
-    "solid-js": "^1.9.17",
     "typescript": "^5.3.0",
     "vitest": "^1.0.0"
   }
