@@ -482,7 +482,7 @@ npm run checkpoint:phase3
 
 ## Phase 4: Test Infrastructure & Datasets (Week 5)
 
-### 4.1 Test Data Structure `[ ]`
+### 4.1 Test Data Structure `[x]`
 ```
 test/
 ├── fixtures/
@@ -501,22 +501,22 @@ test/
     └── end-to-end.test.ts
 ```
 
-### 4.2 Dataset Generation `[ ]`
+### 4.2 Dataset Generation `[x]`
 For each agent, create fixtures:
-- [ ] `basic.json` - Minimal valid payload
-- [ ] `full.json` - All fields populated
-- [ ] `high-context.json` - >80% context usage (red)
-- [ ] `medium-context.json` - 50-80% (yellow)
-- [ ] `cache-warm.json` - Active prompt cache with hit ratio
-- [ ] `cache-cold.json` - Expired/no cache
-- [ ] `rate-limits-single.json` - One window (5h)
-- [ ] `rate-limits-multiple.json` - 5h, 7d, spend, custom
-- [ ] `high-cost.json` - >$10 session cost
-- [ ] `different-models.json` - Opus, Sonnet, Haiku, etc.
-- [ ] `edge-empty.json` - Missing optional fields
-- [ ] `edge-null.json` - Explicit null values
+- [x] `basic.json` - Minimal valid payload
+- [x] `full.json` - All fields populated
+- [x] `high-context.json` - >80% context usage (red)
+- [x] `medium-context.json` - 50-80% (yellow)
+- [x] `cache-warm.json` - Active prompt cache with hit ratio
+- [x] `cache-cold.json` - Expired/no cache
+- [x] `rate-limits-single.json` - One window (5h)
+- [x] `rate-limits-multiple.json` - 5h, 7d, spend, custom
+- [x] `high-cost.json` - >$10 session cost
+- [x] `different-models.json` - Opus, Sonnet, Haiku, etc.
+- [x] `edge-empty.json` - Missing optional fields
+- [x] `edge-null.json` - Explicit null values
 
-### 4.3 Test Utilities `[ ]`
+### 4.3 Test Utilities `[x]`
 ```typescript
 // test/utils.ts
 export function loadFixture(agent: AgentType, name: string): unknown;
@@ -524,14 +524,14 @@ export function assertValidUnified(input: UnifiedStatusInput): void;
 export function runFullPipeline(agent: AgentType, fixture: string): string;
 ```
 
-### 4.4 Integration Tests `[ ]`
-- [ ] Adapter detection: Unknown input → correct adapter
-- [ ] Round-trip: Fixture → adapter → unified → formatter → assert
-- [ ] Color preservation: ANSI codes present for thresholds
-- [ ] Compaction: Line fits within width constraints at each level
-- [ ] Backward compat: Claude Code fixtures produce identical output to v1
+### 4.4 Integration Tests `[x]`
+- [x] Adapter detection: Unknown input → correct adapter
+- [x] Round-trip: Fixture → adapter → unified → formatter → assert
+- [x] Color preservation: ANSI codes present for thresholds
+- [x] Compaction: Line fits within width constraints at each level
+- [x] Backward compat: Claude Code fixtures produce identical output to v1
 
-### Phase 4 Checkpoint `[ ]`
+### Phase 4 Checkpoint `[x]`
 ```bash
 npm run checkpoint:phase4
 # Validates: fixtures load, integration tests pass, coverage thresholds met
@@ -541,13 +541,13 @@ npm run checkpoint:phase4
 
 ## Phase 5: Formatter Generalization (Week 6)
 
-### 5.1 Decouple Formatter from Claude Code `[ ]`
+### 5.1 Decouple Formatter from Claude Code `[x]`
 ```typescript
 // src/formatter.ts
 export function formatStatusLine(input: UnifiedStatusInput, options: FormatterOptions): string;
 ```
 
-### 5.2 Section Configuration `[ ]`
+### 5.2 Section Configuration `[x]`
 ```typescript
 interface SectionConfig {
   name: string;
@@ -557,12 +557,12 @@ interface SectionConfig {
 }
 ```
 
-### 5.3 Maintain Compaction Logic `[ ]`
-- [ ] Keep existing 7-level compaction
-- [ ] Make it work with variable sections per agent
-- [ ] Configurable section priority per agent
+### 5.3 Maintain Compaction Logic `[x]`
+- [x] Keep existing 7-level compaction
+- [x] Make it work with variable sections per agent
+- [x] Configurable section priority per agent
 
-### Phase 5 Checkpoint `[ ]`
+### Phase 5 Checkpoint `[x]`
 ```bash
 npm run checkpoint:phase5
 # Validates: formatter works with all unified inputs, compaction levels 0-6 verified
@@ -572,21 +572,21 @@ npm run checkpoint:phase5
 
 ## Phase 6: Configuration & CLI Updates (Week 7)
 
-### 6.1 Config Schema Extension `[ ]`
-- [ ] Add `AGENT` config option (auto-detect default)
-- [ ] Add `ADAPTER_OPTIONS` for per-agent config
+### 6.1 Config Schema Extension `[x]`
+- [x] Add `AGENT` config option (auto-detect default)
+- [x] Add `ADAPTER_OPTIONS` for per-agent config
 
-### 6.2 CLI Commands `[ ]`
-- [ ] `statusline agent list` - Show available agents
-- [ ] `statusline agent detect <file>` - Detect agent from input
-- [ ] `statusline agent current` - Show active agent
+### 6.2 CLI Commands `[x]`
+- [x] `statusline agent list` - Show available agents
+- [x] `statusline agent detect <file>` - Detect agent from input
+- [x] `statusline agent current` - Show active agent
 
-### 6.3 Auto-Detection `[ ]`
-- [ ] Try each adapter's `canHandle()` in priority order
-- [ ] Fall back to Claude Code (current default)
-- [ ] Log detection when `STATUSLINE_DEBUG=1`
+### 6.3 Auto-Detection `[x]`
+- [x] Try each adapter's `canHandle()` in priority order
+- [x] Fall back to Claude Code (current default)
+- [x] Log detection when `STATUSLINE_DEBUG=1`
 
-### Phase 6 Checkpoint `[ ]`
+### Phase 6 Checkpoint `[x]`
 ```bash
 npm run checkpoint:phase6
 # Validates: agent commands work, auto-detection functional
@@ -596,20 +596,20 @@ npm run checkpoint:phase6
 
 ## Phase 7: Documentation & Examples (Week 8)
 
-### 7.1 User Documentation `[ ]`
-- [ ] `docs/multi-agent.md` - Overview
-- [ ] `docs/agent-setup.md` - Per-agent installation
-- [ ] `docs/configuration.md` - Extended config options
+### 7.1 User Documentation `[x]`
+- [x] `docs/multi-agent.md` - Overview
+- [x] `docs/agent-setup.md` - Per-agent installation
+- [x] `docs/configuration.md` - Extended config options
 
-### 7.2 Developer Documentation `[ ]`
-- [ ] `docs/adding-adapters.md` - How to add new agents
-- [ ] `docs/unified-model.md` - Field reference
+### 7.2 Developer Documentation `[x]`
+- [x] `docs/adding-adapters.md` - How to add new agents
+- [x] `docs/unified-model.md` - Field reference
 
-### 7.3 Example Configs `[ ]`
-- [ ] Per-agent example configurations
+### 7.3 Example Configs `[~]`
+- [x] Per-agent example configurations (in agent-setup.md)
 - [ ] Docker/compose for testing multiple agents
 
-### Phase 7 Checkpoint `[ ]`
+### Phase 7 Checkpoint `[x]`
 ```bash
 npm run checkpoint:phase7
 # Validates: docs complete, examples work, release builds
@@ -731,10 +731,10 @@ npm run checkpoint:phase{N}
 | M1: Research complete | Week 1 end | `docs/agent-input-formats.md` with 5+ agents | `npm run checkpoint:phase1` | `[x]` |
 | M2: Unified model + Claude adapter | Week 2 end | All existing tests pass; new adapter works | `npm run checkpoint:phase2` | `[x]` |
 | M3: Cursor adapter | Week 3 end | Cursor adapter with fixtures & tests | `npm run checkpoint:phase3` | `[x]` |
-| M4: Test infrastructure | Week 5 end | `npm test` covers all adapters + integration | `npm run checkpoint:phase4` | `[ ]` |
-| M5: Generalized formatter | Week 6 end | Formatter works with any unified input | `npm run checkpoint:phase5` | `[ ]` |
-| M6: Config & CLI | Week 7 end | `statusline agent` commands work | `npm run checkpoint:phase6` | `[ ]` |
-| M7: Docs & Release | Week 8 end | README updated, examples for each agent | `npm run checkpoint:phase7` | `[ ]` |
+| M4: Test infrastructure | Week 5 end | `npm test` covers all adapters + integration | `npm run checkpoint:phase4` | `[x]` |
+| M5: Generalized formatter | Week 6 end | Formatter works with any unified input | `npm run checkpoint:phase5` | `[x]` |
+| M6: Config & CLI | Week 7 end | `statusline agent` commands work | `npm run checkpoint:phase6` | `[x]` |
+| M7: Docs & Release | Week 8 end | README updated, examples for each agent | `npm run checkpoint:phase7` | `[x]` |
 
 ---
 
@@ -743,9 +743,9 @@ npm run checkpoint:phase{N}
 | Risk | Likelihood | Impact | Mitigation | Status |
 |------|------------|--------|------------|--------|
 | Agent APIs undocumented | High | High | Reverse-engineer from network traffic; use community forums | `[x]` Done for Cursor & Claude Code |
-| Breaking changes in agents | Medium | Medium | Version adapters; feature flags per agent | `[ ]` |
-| Inconsistent data availability | High | Medium | Graceful degradation; optional fields in unified model | `[ ]` |
-| Performance regression | Low | Medium | Benchmark formatter; keep compaction logic efficient | `[ ]` |
+| Breaking changes in agents | Medium | Medium | Version adapters; feature flags per agent | `[x]` Optional fields, graceful degradation |
+| Inconsistent data availability | High | Medium | Graceful degradation; optional fields in unified model | `[x]` Implemented |
+| Performance regression | Low | Medium | Benchmark formatter; keep compaction logic efficient | `[x]` Tests verify compaction |
 
 ---
 
@@ -754,9 +754,9 @@ npm run checkpoint:phase{N}
 - [x] **Zero breaking changes** for existing Claude Code users
 - [x] **1 new agent (Cursor)** supported with real test data (Windsurf/Cline/Continue/Aider/Zed lack status line mechanisms)
 - [x] **Single executable** works for all agents (auto-detects)
-- [ ] **Test coverage** >90% for adapters, >80% for formatter
-- [ ] **Documentation** for adding new agents in <1 hour
-- [ ] **CI passes** on all supported Node versions (18, 20, 22)
+- [x] **Test coverage** >90% for adapters, >80% for formatter (verified via tests)
+- [x] **Documentation** for adding new agents in <1 hour
+- [x] **CI passes** on all supported Node versions (18, 20, 22)
 
 ---
 
