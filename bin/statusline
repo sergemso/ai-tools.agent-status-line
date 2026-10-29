@@ -168,25 +168,25 @@ var init_http = __esm({
 });
 
 // src/utils/fs.ts
-import { promises as fs3 } from "fs";
-import { dirname as dirname3 } from "path";
-import { fileURLToPath as fileURLToPath3 } from "url";
+import { promises as fs4 } from "fs";
+import { dirname as dirname4 } from "path";
+import { fileURLToPath as fileURLToPath4 } from "url";
 async function atomicWrite(path, content, mode = 420) {
-  await ensureDir3(dirname3(path));
+  await ensureDir3(dirname4(path));
   const tmp = `${path}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
-  await fs3.writeFile(tmp, content, { mode });
-  await fs3.rename(tmp, path);
+  await fs4.writeFile(tmp, content, { mode });
+  await fs4.rename(tmp, path);
 }
 async function tryLock(lockPath, staleAfterMs = 12e4) {
   try {
     try {
-      const stat = await fs3.stat(lockPath);
+      const stat = await fs4.stat(lockPath);
       if (Date.now() - stat.mtimeMs > staleAfterMs) {
-        await fs3.rmdir(lockPath);
+        await fs4.rmdir(lockPath);
       }
     } catch {
     }
-    await fs3.mkdir(lockPath);
+    await fs4.mkdir(lockPath);
     return true;
   } catch {
     return false;
@@ -194,13 +194,13 @@ async function tryLock(lockPath, staleAfterMs = 12e4) {
 }
 async function releaseLock(lockPath) {
   try {
-    await fs3.rmdir(lockPath);
+    await fs4.rmdir(lockPath);
   } catch {
   }
 }
 async function getMtime(path) {
   try {
-    const stat = await fs3.stat(path);
+    const stat = await fs4.stat(path);
     return stat.mtimeMs;
   } catch {
     return 0;
@@ -208,16 +208,16 @@ async function getMtime(path) {
 }
 async function ensureDir3(dir) {
   try {
-    await fs3.mkdir(dir, { recursive: true });
+    await fs4.mkdir(dir, { recursive: true });
   } catch {
   }
 }
-var __filename3, __dirname3;
+var __filename4, __dirname4;
 var init_fs = __esm({
   "src/utils/fs.ts"() {
     "use strict";
-    __filename3 = fileURLToPath3(import.meta.url);
-    __dirname3 = dirname3(__filename3);
+    __filename4 = fileURLToPath4(import.meta.url);
+    __dirname4 = dirname4(__filename4);
   }
 });
 
@@ -226,16 +226,16 @@ var refresh_prices_exports = {};
 __export(refresh_prices_exports, {
   refreshPrices: () => refreshPrices
 });
-import { join as join4 } from "path";
-import { promises as fs4 } from "fs";
+import { join as join5 } from "path";
+import { promises as fs5 } from "fs";
 async function refreshPrices(claudeConfigDir, ttl = 3600) {
   const pricesPath = getPricesPath(claudeConfigDir);
-  const lockPath = join4(claudeConfigDir, ".model-prices.lock.d");
-  const failPath = join4(claudeConfigDir, ".model-prices.fail");
+  const lockPath = join5(claudeConfigDir, ".model-prices.lock.d");
+  const failPath = join5(claudeConfigDir, ".model-prices.fail");
   try {
-    const stat = await fs4.stat(lockPath);
+    const stat = await fs5.stat(lockPath);
     if (Date.now() - stat.mtimeMs > LOCK_STALE_AFTER) {
-      await fs4.rmdir(lockPath);
+      await fs5.rmdir(lockPath);
     }
   } catch {
   }
@@ -273,7 +273,7 @@ async function refreshPrices(claudeConfigDir, ttl = 3600) {
     }
     const table = { models };
     await savePrices(claudeConfigDir, table);
-    await fs4.unlink(failPath).catch(() => {
+    await fs5.unlink(failPath).catch(() => {
     });
   } catch (error) {
     await atomicWrite(failPath, "");
@@ -345,8 +345,8 @@ var init_refresh_prices = __esm({
 
 // dist/statusline.js
 init_constants();
-import { join as join5 } from "path";
-import { fileURLToPath as fileURLToPath4 } from "url";
+import { join as join6 } from "path";
+import { fileURLToPath as fileURLToPath5 } from "url";
 
 // src/shared/config-file.ts
 import { promises as fs } from "fs";
@@ -757,7 +757,7 @@ var cursorAdapter = new CursorAdapter();
 adapterRegistry.register(cursorAdapter);
 adapterRegistry.register(claudeCodeAdapter);
 
-// dist/formatter.js
+// dist/formatter.legacy.js
 init_constants();
 
 // src/shared/colors.ts
@@ -835,7 +835,7 @@ function visibleWidth(str) {
   return t.length;
 }
 
-// dist/formatter.js
+// dist/formatter.legacy.js
 init_prices();
 function convertRateLimitWindow(window) {
   return {
@@ -1170,13 +1170,1644 @@ async function formatStatusLine(unified, options = {}) {
   }
   if (dumpPath) {
     try {
-      const { promises: fs6 } = await import("fs");
-      await fs6.appendFile(dumpPath, `
+      const { promises: fs7 } = await import("fs");
+      await fs7.appendFile(dumpPath, `
 cols=${cols} margin=${margin} level=${level} visible=${visibleWidth(line)}`);
     } catch {
     }
   }
   return line;
+}
+
+// dist/shared/prices.js
+import { promises as fs3 } from "fs";
+import { join as join3, dirname as dirname3 } from "path";
+import { fileURLToPath as fileURLToPath3 } from "url";
+
+// dist/shared/constants.js
+var DEFAULT_PRICES_TTL2 = 3600;
+var BLOCK_CHARS2 = ["\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"];
+var LEFT_BORDER2 = "\u2595";
+var RIGHT_BORDER2 = "\u258F";
+var ALL_BLOCK_CHARS2 = [...BLOCK_CHARS2, LEFT_BORDER2, RIGHT_BORDER2];
+
+// dist/shared/prices.js
+var __filename3 = fileURLToPath3(import.meta.url);
+var __dirname3 = dirname3(__filename3);
+var pricesCache2 = null;
+function getPricesPath2(claudeConfigDir) {
+  return join3(claudeConfigDir, "model-prices.json");
+}
+async function loadPrices2(claudeConfigDir, ttl = DEFAULT_PRICES_TTL2) {
+  const path = getPricesPath2(claudeConfigDir);
+  const now = Date.now();
+  if (pricesCache2 && now - pricesCache2.mtime < ttl * 1e3) {
+    return pricesCache2.table;
+  }
+  try {
+    const stat = await fs3.stat(path);
+    if (now - stat.mtimeMs < ttl * 1e3) {
+      const content = await fs3.readFile(path, "utf-8");
+      const table = JSON.parse(content);
+      pricesCache2 = { table, mtime: stat.mtimeMs };
+      return table;
+    }
+  } catch {
+  }
+  return { models: {} };
+}
+function matchModelPrice2(table, modelName, baseModel, fastMode) {
+  const models = table.models;
+  const base = models[baseModel]?.in;
+  if (!base || base === 0)
+    return null;
+  const candidates = [
+    modelName,
+    `Claude ${modelName}`,
+    modelName.toLowerCase(),
+    `claude ${modelName.toLowerCase()}`
+  ];
+  let matched;
+  for (const c of candidates) {
+    if (models[c]) {
+      matched = models[c];
+      break;
+    }
+  }
+  if (!matched)
+    return null;
+  const inputPrice = fastMode && matched.fast_in ? matched.fast_in : matched.in;
+  const multiplier = inputPrice / base * 10;
+  return Math.round(multiplier) / 10;
+}
+
+// packages/core/dist/model.js
+var Priority = {
+  NONE: 0,
+  LOW: 10,
+  MEDIUM: 30,
+  HIGH: 70,
+  CRITICAL: 100
+};
+var DEFAULT_CONFIG = {
+  sections: {},
+  items: {},
+  priorityThreshold: Priority.NONE,
+  sectionSeparator: " | ",
+  itemSeparator: " ",
+  contextWarn: 50,
+  contextCrit: 80,
+  cacheWarn: 20,
+  cacheCrit: 5,
+  resetWarn: 50,
+  resetCrit: 80,
+  overheadWarn: 5,
+  overheadCrit: 20
+};
+
+// packages/core/dist/priority.js
+var PriorityLevel = {
+  NONE: 0,
+  LOW: 10,
+  MEDIUM: 30,
+  HIGH: 70,
+  CRITICAL: 100
+};
+function compositePriority(sectionPriority, itemPriority) {
+  return sectionPriority * 1e3 + itemPriority;
+}
+function parsePriority(value) {
+  if (typeof value === "number") {
+    const clamped = Math.max(0, Math.min(100, Math.round(value / 10) * 10));
+    return clamped;
+  }
+  if (typeof value === "string") {
+    const upper = value.toUpperCase();
+    const labelToPriority = {
+      NONE: 0,
+      LOW: 10,
+      "LOW+": 20,
+      MEDIUM: 30,
+      "MEDIUM+": 40,
+      "MEDIUM++": 50,
+      "HIGH-": 60,
+      HIGH: 70,
+      "HIGH+": 80,
+      "CRITICAL-": 90,
+      CRITICAL: 100
+    };
+    return labelToPriority[upper] ?? parsePriority(parseInt(upper, 10));
+  }
+  return 0;
+}
+
+// packages/core/dist/layout.js
+var SECTION_SEPARATOR_WIDTH = 3;
+var ITEM_SEPARATOR_WIDTH = 1;
+function estimateWidth(item, ctx) {
+  let content = "";
+  if (typeof item.content === "string") {
+    content = item.content;
+  } else if (typeof item.content === "function") {
+    content = item.content(ctx);
+  } else if ("template" in item.content) {
+    const { template, values, fallback } = item.content;
+    try {
+      content = template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? fallback ?? ""));
+    } catch {
+      content = fallback ?? "";
+    }
+  } else if ("parts" in item.content) {
+    content = item.content.parts.map((p) => p.text).join("");
+  }
+  const stripped = content.replace(/\x1b\[[0-9;]*m/g, "");
+  return stripped.length;
+}
+function calculateSectionOrderWidth(sections, ctx, availableWidth) {
+  let width = 0;
+  const sectionsWithWidth = sections.map((section) => ({
+    ...section,
+    items: section.items.map((item) => ({
+      ...item,
+      estimatedWidth: estimateWidth(item, ctx)
+    }))
+  }));
+  for (let i = 0; i < sectionsWithWidth.length; i++) {
+    const section = sectionsWithWidth[i];
+    for (let j = 0; j < section.items.length; j++) {
+      width += section.items[j].estimatedWidth;
+      if (j > 0)
+        width += ITEM_SEPARATOR_WIDTH;
+    }
+    if (i > 0 && section.items.length > 0) {
+      const prevHasItems = sectionsWithWidth.slice(0, i).some((s) => s.items.length > 0);
+      if (prevHasItems) {
+        width += SECTION_SEPARATOR_WIDTH;
+      }
+    }
+    if (width > availableWidth) {
+      return { width, fits: false };
+    }
+  }
+  return { width, fits: true };
+}
+function buildLayout(sections, ctx) {
+  const availableWidth = ctx.width;
+  const widthConstrained = ctx.widthConstrained ?? true;
+  const droppedItems = [];
+  const visibleSections = sections.filter((section) => !section.visibleWhen || section.visibleWhen(ctx)).map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !item.visibleWhen || item.visibleWhen(ctx)).map((item) => ({
+      ...item,
+      estimatedWidth: estimateWidth(item, ctx)
+    }))
+  })).filter((section) => section.items.length > 0);
+  const { width: totalWidth, fits: sectionOrderFits } = calculateSectionOrderWidth(visibleSections, ctx, availableWidth);
+  if (!widthConstrained || sectionOrderFits) {
+    return {
+      sections: visibleSections.map(({ items, ...s }) => ({
+        ...s,
+        items: items.map(({ estimatedWidth, ...item }) => item)
+      })),
+      meta: {
+        totalWidth,
+        availableWidth,
+        overflow: false,
+        droppedItems: []
+      }
+    };
+  }
+  const allItems = [];
+  for (const section of visibleSections) {
+    for (const item of section.items) {
+      allItems.push({
+        sectionId: section.id,
+        sectionPriority: section.priority,
+        item,
+        compositePriority: compositePriority(section.priority, item.priority)
+      });
+    }
+  }
+  allItems.sort((a, b) => b.compositePriority - a.compositePriority);
+  const keptItems = /* @__PURE__ */ new Set();
+  let usedWidth = 0;
+  for (const entry of allItems) {
+    const { sectionId, item, compositePriority: compositePriority2 } = entry;
+    const itemKey = `${sectionId}:${item.id}`;
+    let itemWidth = item.estimatedWidth;
+    const sectionKeptCount = Array.from(keptItems).filter((k) => k.startsWith(`${sectionId}:`)).length;
+    if (sectionKeptCount > 0) {
+      itemWidth += ITEM_SEPARATOR_WIDTH;
+    }
+    const hasOtherSections = Array.from(keptItems).some((k) => !k.startsWith(`${sectionId}:`));
+    if (sectionKeptCount === 0 && hasOtherSections) {
+      itemWidth += SECTION_SEPARATOR_WIDTH;
+    }
+    if (usedWidth + itemWidth <= availableWidth) {
+      keptItems.add(itemKey);
+      usedWidth += itemWidth;
+    } else {
+      const isCritical = item.priority >= 100;
+      if (isCritical) {
+        let evictKey = null;
+        let evictPriority = 100;
+        for (const keptKey of keptItems) {
+          const [keptSectionId, keptItemId] = keptKey.split(":");
+          const keptEntry = allItems.find((e) => e.sectionId === keptSectionId && e.item.id === keptItemId);
+          if (keptEntry && keptEntry.item.priority < 100) {
+            if (keptEntry.item.priority < evictPriority) {
+              evictPriority = keptEntry.item.priority;
+              evictKey = keptKey;
+            }
+          }
+        }
+        if (evictKey) {
+          keptItems.delete(evictKey);
+          const [evictSectionId, evictItemId] = evictKey.split(":");
+          droppedItems.push({
+            sectionId: evictSectionId,
+            itemId: evictItemId,
+            priority: evictPriority
+          });
+          usedWidth = recalcUsedWidth(keptItems, allItems, availableWidth);
+          keptItems.add(itemKey);
+          usedWidth = recalcUsedWidth(keptItems, allItems, availableWidth);
+        } else {
+          droppedItems.push({
+            sectionId,
+            itemId: item.id,
+            priority: item.priority
+          });
+        }
+      } else {
+        droppedItems.push({
+          sectionId,
+          itemId: item.id,
+          priority: item.priority
+        });
+      }
+    }
+  }
+  const layoutSections = [];
+  for (const section of visibleSections) {
+    const keptSectionItems = section.items.filter((item) => keptItems.has(`${section.id}:${item.id}`));
+    if (section.minItems && keptSectionItems.length < section.minItems) {
+      const sortedItems = [...section.items].sort((a, b) => b.priority - a.priority);
+      const minItems = sortedItems.slice(0, section.minItems);
+      for (const item of minItems) {
+        const itemKey = `${section.id}:${item.id}`;
+        if (!keptItems.has(itemKey)) {
+          keptItems.add(itemKey);
+          keptSectionItems.push(item);
+        }
+      }
+    }
+    if (keptSectionItems.length > 0) {
+      layoutSections.push({
+        ...section,
+        items: keptSectionItems.map(({ estimatedWidth, ...item }) => item)
+      });
+    }
+  }
+  return {
+    sections: layoutSections,
+    meta: {
+      totalWidth,
+      availableWidth,
+      overflow: droppedItems.length > 0,
+      droppedItems
+    }
+  };
+}
+function recalcUsedWidth(keptItems, allItems, availableWidth) {
+  let width = 0;
+  const sectionCounts = /* @__PURE__ */ new Map();
+  const sectionOrder = [...new Set(allItems.map((e) => e.sectionId))];
+  for (let i = 0; i < sectionOrder.length; i++) {
+    const sectionId = sectionOrder[i];
+    const sectionItems = allItems.filter((e) => e.sectionId === sectionId);
+    for (let j = 0; j < sectionItems.length; j++) {
+      const itemKey = `${sectionId}:${sectionItems[j].item.id}`;
+      if (keptItems.has(itemKey)) {
+        width += sectionItems[j].item.estimatedWidth;
+        if (j > 0)
+          width += ITEM_SEPARATOR_WIDTH;
+        sectionCounts.set(sectionId, (sectionCounts.get(sectionId) ?? 0) + 1);
+      }
+    }
+    if (i > 0 && sectionCounts.get(sectionId) && sectionCounts.get(sectionId) > 0) {
+      const prevHasItems = sectionOrder.slice(0, i).some((s) => (sectionCounts.get(s) ?? 0) > 0);
+      if (prevHasItems) {
+        width += SECTION_SEPARATOR_WIDTH;
+      }
+    }
+  }
+  return Math.min(width, availableWidth);
+}
+
+// packages/core/dist/sections/model.js
+var MODEL_SECTION_ID = "model";
+function renderModelName(model) {
+  const RESET3 = "\x1B[0m";
+  const CYAN3 = "\x1B[36m";
+  const DIM3 = "\x1B[2m";
+  const GREEN3 = "\x1B[32m";
+  const YELLOW3 = "\x1B[33m";
+  const RED3 = "\x1B[31m";
+  let modelDisplay = `${CYAN3}${model.name}${RESET3}`;
+  const effortLevel = model.effort;
+  let effortDisplay = "";
+  switch (effortLevel) {
+    case "low":
+      effortDisplay = `${DIM3}lo${RESET3}`;
+      break;
+    case "medium":
+      effortDisplay = `${GREEN3}med${RESET3}`;
+      break;
+    case "high":
+      effortDisplay = `${YELLOW3}hi${RESET3}`;
+      break;
+    case "xhigh":
+      effortDisplay = `${RED3}xhi${RESET3}`;
+      break;
+    case "max":
+      effortDisplay = `${RED3}max${RESET3}`;
+      break;
+    default:
+      if (effortLevel)
+        effortDisplay = `${DIM3}${effortLevel}${RESET3}`;
+  }
+  return `${modelDisplay}${effortDisplay ? ` ${effortDisplay}` : ""}`;
+}
+var modelSection = {
+  id: MODEL_SECTION_ID,
+  name: "Model",
+  priority: PriorityLevel.CRITICAL,
+  items: [],
+  // Populated dynamically
+  visibleWhen: (ctx) => !!ctx.input?.model,
+  minItems: 1
+};
+function createModelSection(ctx) {
+  const model = ctx.input.model;
+  if (!model)
+    return { ...modelSection, items: [] };
+  const items = [];
+  if (model.name) {
+    items.push({
+      id: "name",
+      content: (ctx2) => renderModelName(ctx2.input.model),
+      priority: PriorityLevel.CRITICAL,
+      minWidth: 3,
+      idealWidth: 30,
+      hints: { truncatable: true, truncateSuffix: "\u2026" }
+    });
+  }
+  if (model.costMultiplier !== void 0 && model.costMultiplier !== 1 && model.costMultiplier !== null) {
+    items.push({
+      id: "costMultiplier",
+      content: (ctx2) => `\x1B[36m${model.name}\x1B[0m \x1B[2mx${model.costMultiplier.toFixed(1).replace(/\.0$/, "")}\x1B[0m`,
+      priority: PriorityLevel.LOW,
+      minWidth: 6,
+      idealWidth: 12,
+      hints: { truncatable: false }
+    });
+  }
+  return {
+    ...modelSection,
+    items
+  };
+}
+
+// packages/core/dist/sections/context.js
+var BLOCK_CHARS3 = ["\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"];
+var LEFT_BORDER3 = "\u2595";
+var RIGHT_BORDER3 = "\u258F";
+var CONTEXT_WARN = 50;
+var CONTEXT_CRIT = 80;
+var CONTEXT_SECTION_ID = "context";
+function createContextItems(input) {
+  const context = input.context;
+  if (!context)
+    return [];
+  const items = [];
+  if (context.percentage !== void 0) {
+    items.push({
+      id: "bar",
+      content: (ctx) => renderContextBar(ctx.input.context, ctx.config),
+      priority: PriorityLevel.HIGH,
+      minWidth: 10,
+      idealWidth: 20,
+      hints: { truncatable: false }
+    });
+  }
+  return items;
+}
+function renderContextBar(context, config) {
+  const pct = Math.min(100, Math.max(0, context.percentage ?? 0));
+  const width = 8;
+  const blockIdx = Math.min(Math.floor(pct / 12.5), 7);
+  const fill = BLOCK_CHARS3[blockIdx];
+  const warn = config?.contextWarn ?? CONTEXT_WARN;
+  const crit = config?.contextCrit ?? CONTEXT_CRIT;
+  let color = "\x1B[32m";
+  if (pct >= crit)
+    color = "\x1B[31m";
+  else if (pct >= warn)
+    color = "\x1B[33m";
+  const RESET3 = "\x1B[0m";
+  const ctxChar = `${color}${LEFT_BORDER3}${fill}${RIGHT_BORDER3}${RESET3}`;
+  const ctxPct = `${color}${Math.round(pct)}%${RESET3}`;
+  const sizeStr = context.tokensTotal ? `${"\x1B[2m"}/${formatNumber(context.tokensTotal)}${RESET3}` : "";
+  return `${ctxChar} ${ctxPct}${sizeStr}`;
+}
+function formatNumber(n) {
+  if (n >= 1e6)
+    return Math.floor(n / 1e6) + "M";
+  if (n >= 1e3)
+    return Math.floor(n / 1e3) + "k";
+  return String(n);
+}
+var contextSection = {
+  id: CONTEXT_SECTION_ID,
+  name: "Context",
+  priority: PriorityLevel.HIGH,
+  items: [],
+  visibleWhen: (ctx) => !!ctx.input?.context,
+  minItems: 1
+};
+function createContextSection(ctx) {
+  return {
+    ...contextSection,
+    items: createContextItems(ctx.input)
+  };
+}
+
+// packages/core/dist/sections/cost.js
+var COST_SECTION_ID = "cost";
+var costSection = {
+  id: COST_SECTION_ID,
+  name: "Cost",
+  priority: PriorityLevel.HIGH,
+  items: [],
+  visibleWhen: (ctx) => !!ctx.input?.cost?.session,
+  minItems: 1
+};
+function createCostSection(ctx) {
+  const cost = ctx.input.cost;
+  if (!cost)
+    return { ...costSection, items: [] };
+  const items = [];
+  if (cost.session !== void 0) {
+    items.push({
+      id: "session",
+      content: (ctx2) => `${formatCost(ctx2.input.cost.session)} \x1B[2msess\x1B[0m`,
+      priority: PriorityLevel.HIGH,
+      minWidth: 8,
+      idealWidth: 12,
+      hints: { truncatable: false }
+    });
+  }
+  return {
+    ...costSection,
+    items
+  };
+}
+function formatCost(cost) {
+  if (cost >= 1)
+    return `$${cost.toFixed(2)}`;
+  if (cost >= 0.01)
+    return `$${cost.toFixed(2)}`;
+  return `$${cost.toFixed(4)}`;
+}
+
+// packages/core/dist/sections/cache.js
+var CACHE_WARN = 20;
+var CACHE_CRIT = 5;
+var CACHE_SECTION_ID = "cache";
+function createCacheItems(input) {
+  const cache = input.cache;
+  if (!cache)
+    return [];
+  const items = [];
+  if (cache.status === "warm" && cache.expiresAt !== void 0) {
+    items.push({
+      id: "timer",
+      content: (ctx) => renderCacheTimer(ctx.input.cache, ctx.config),
+      priority: PriorityLevel.MEDIUM,
+      minWidth: 4,
+      idealWidth: 15,
+      hints: { truncatable: false }
+    });
+  } else if (cache.status === "cold") {
+    items.push({
+      id: "cold",
+      content: (ctx) => renderColdCache(ctx.input.cache),
+      priority: PriorityLevel.HIGH,
+      minWidth: 8,
+      idealWidth: 15,
+      hints: { truncatable: false }
+    });
+  }
+  return items;
+}
+function renderCacheTimer(cache, config) {
+  const now = Math.floor(Date.now() / 1e3);
+  const rem = cache.expiresAt - now;
+  if (rem <= 0) {
+    return renderColdCache(cache);
+  }
+  const warn = (config?.cacheWarn ?? CACHE_WARN) * 60;
+  const crit = (config?.cacheCrit ?? CACHE_CRIT) * 60;
+  let color = "\x1B[32m";
+  if (rem < crit)
+    color = "\x1B[31m";
+  else if (rem < warn)
+    color = "\x1B[33m";
+  const remMinutes = rem >= 60 ? Math.floor(rem / 60) * 60 : rem;
+  const formatted = formatDuration(remMinutes).replace(/ /g, "");
+  let hitRatioStr = "";
+  if (cache.hitRatio !== void 0) {
+    const pct = Math.round(cache.hitRatio * 100);
+    const hrColor = pct < 80 ? "\x1B[31m" : "\x1B[32m";
+    hitRatioStr = ` ${hrColor}${pct}%\x1B[0m`;
+  }
+  return `\x1B[2m\u23F1\x1B[0m ${color}${formatted}\x1B[0m${hitRatioStr}`;
+}
+function renderColdCache(cache) {
+  let hitRatioStr = "";
+  if (cache.hitRatio !== void 0) {
+    const pct = Math.round(cache.hitRatio * 100);
+    const hrColor = pct < 80 ? "\x1B[31m" : "\x1B[32m";
+    hitRatioStr = ` ${hrColor}${pct}%\x1B[0m`;
+  }
+  return `\x1B[31m\u23F1 cold\x1B[0m${hitRatioStr}`;
+}
+function formatDuration(seconds) {
+  if (seconds >= 3600) {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor(seconds % 3600 / 60);
+    return `${hours}h${mins > 0 ? mins + "m" : ""}`;
+  }
+  if (seconds >= 60) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m${secs > 0 ? secs + "s" : ""}`;
+  }
+  return `${seconds}s`;
+}
+var cacheSection = {
+  id: CACHE_SECTION_ID,
+  name: "Cache",
+  priority: PriorityLevel.MEDIUM,
+  items: [],
+  visibleWhen: (ctx) => !!ctx.input?.cache,
+  minItems: 0
+};
+function createCacheSection(ctx) {
+  return {
+    ...cacheSection,
+    items: createCacheItems(ctx.input)
+  };
+}
+
+// packages/core/dist/sections/rate-limits.js
+var WINDOW_ALIASES = {
+  "5h": { alias: "5h", name: "", total: "100" },
+  "7d": { alias: "7d", name: "", total: "100" },
+  spend: { alias: "spend", name: "Spend limit", total: "100" },
+  "1d": { alias: "1d", name: "", total: "100" }
+};
+var RATE_LIMITS_SECTION_ID = "rate-limits";
+function createRateLimitsItems(input, config) {
+  const rateLimits = input.rateLimits;
+  if (!rateLimits || !Array.isArray(rateLimits) || rateLimits.length === 0) {
+    return [];
+  }
+  const resetsFilter = config?.sections?.["rate-limits"]?.resets;
+  let filteredLimits = rateLimits;
+  if (resetsFilter && Array.isArray(resetsFilter) && resetsFilter.length > 0) {
+    filteredLimits = rateLimits.filter((r) => resetsFilter.includes(r.window));
+  }
+  const items = [];
+  for (const limit of filteredLimits) {
+    if (!limit.window || limit.remaining === void 0)
+      continue;
+    const alias = WINDOW_ALIASES[limit.window]?.alias ?? limit.window;
+    const name = WINDOW_ALIASES[limit.window]?.name ?? "";
+    const total = WINDOW_ALIASES[limit.window]?.total ?? "";
+    const used = limit.limit - limit.remaining;
+    const pct = limit.limit > 0 ? used / limit.limit * 100 : 0;
+    const priority = pct >= 80 ? PriorityLevel.HIGH : pct >= 50 ? PriorityLevel.MEDIUM : PriorityLevel.LOW;
+    items.push({
+      id: `window-${limit.window}`,
+      content: (ctx) => renderRateLimit(limit, ctx.config),
+      priority,
+      minWidth: 8,
+      idealWidth: 25,
+      hints: { truncatable: true, truncateSuffix: "\u2026" }
+    });
+  }
+  return items;
+}
+function renderRateLimit(limit, config) {
+  const alias = WINDOW_ALIASES[limit.window]?.alias ?? limit.window;
+  const name = WINDOW_ALIASES[limit.window]?.name ?? "";
+  const used = limit.limit - limit.remaining;
+  const pct = limit.limit > 0 ? Math.round(used / limit.limit * 100) : 0;
+  const remaining = limit.remaining;
+  const lmt = limit.limit;
+  const warn = config?.resetWarn ?? 50;
+  const crit = config?.resetCrit ?? 80;
+  let pctColor = "\x1B[32m";
+  if (pct >= crit)
+    pctColor = "\x1B[31m";
+  else if (pct >= warn)
+    pctColor = "\x1B[33m";
+  const now = Math.floor(Date.now() / 1e3);
+  const resetsAt = limit.resetsAt ?? 0;
+  const left = resetsAt - now;
+  const timeLeft = formatDuration2(left);
+  const totPart = ` \x1B[2m/ ${lmt}\x1B[0m`;
+  let namePart = "";
+  if (name)
+    namePart = `\x1B[2m${name}\x1B[0m `;
+  let pctPart = `${pctColor}${pct}%\x1B[0m `;
+  return `${namePart}\x1B[2m${alias}\x1B[0m ${pctPart}${timeLeft}${totPart}`;
+}
+function formatDuration2(seconds) {
+  if (seconds <= 0)
+    return "0s";
+  if (seconds >= 86400) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor(seconds % 86400 / 3600);
+    return `${days}d${hours > 0 ? hours + "h" : ""}`;
+  }
+  if (seconds >= 3600) {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor(seconds % 3600 / 60);
+    return `${hours}h${mins > 0 ? mins + "m" : ""}`;
+  }
+  if (seconds >= 60) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m${secs > 0 ? secs + "s" : ""}`;
+  }
+  return `${seconds}s`;
+}
+var rateLimitsSection = {
+  id: RATE_LIMITS_SECTION_ID,
+  name: "Rate Limits",
+  priority: PriorityLevel.MEDIUM,
+  items: [],
+  visibleWhen: (ctx) => Array.isArray(ctx.input?.rateLimits) && ctx.input.rateLimits.length > 0,
+  minItems: 0
+};
+function createRateLimitsSection(ctx) {
+  return {
+    ...rateLimitsSection,
+    items: createRateLimitsItems(ctx.input, ctx.config)
+  };
+}
+
+// packages/core/dist/sections/usage.js
+var USAGE_SECTION_ID = "usage";
+function createUsageItems(input) {
+  const usage2 = input.usage;
+  if (!usage2)
+    return [];
+  const items = [];
+  if (usage2.totalTokens !== void 0) {
+    items.push({
+      id: "tokens",
+      content: (ctx) => formatTokens(ctx.input.usage.totalTokens),
+      priority: PriorityLevel.MEDIUM,
+      minWidth: 4,
+      idealWidth: 12,
+      hints: { truncatable: false }
+    });
+  }
+  if (usage2.cacheTokens !== void 0) {
+    items.push({
+      id: "cacheTokens",
+      content: (ctx) => `cache: ${formatTokens(ctx.input.usage.cacheTokens)}`,
+      priority: PriorityLevel.LOW,
+      minWidth: 8,
+      idealWidth: 16,
+      hints: { truncatable: false }
+    });
+  }
+  return items;
+}
+function formatTokens(tokens) {
+  if (tokens >= 1e6)
+    return `${(tokens / 1e6).toFixed(1)}M`;
+  if (tokens >= 1e3)
+    return `${(tokens / 1e3).toFixed(1)}k`;
+  return String(tokens);
+}
+var usageSection = {
+  id: USAGE_SECTION_ID,
+  name: "Usage",
+  priority: PriorityLevel.MEDIUM,
+  items: [],
+  visibleWhen: (ctx) => !!ctx.input?.usage,
+  minItems: 0
+};
+function createUsageSection(ctx) {
+  return {
+    ...usageSection,
+    items: createUsageItems(ctx.input)
+  };
+}
+
+// packages/core/dist/sections/vim.js
+var VIM_SECTION_ID = "vim";
+function createVimItems(input) {
+  const vim = input.vim;
+  if (!vim || !vim.mode)
+    return [];
+  const items = [];
+  items.push({
+    id: "mode",
+    content: vim.mode,
+    priority: PriorityLevel.LOW,
+    minWidth: 2,
+    idealWidth: 8,
+    hints: { truncatable: false }
+  });
+  return items;
+}
+var vimSection = {
+  id: VIM_SECTION_ID,
+  name: "Vim",
+  priority: PriorityLevel.LOW,
+  items: [],
+  visibleWhen: (ctx) => !!ctx.input?.vim?.mode,
+  minItems: 0
+};
+function createVimSection(ctx) {
+  return {
+    ...vimSection,
+    items: createVimItems(ctx.input)
+  };
+}
+
+// packages/core/dist/sections/worktree.js
+var WORKTREE_SECTION_ID = "worktree";
+function createWorktreeItems(input) {
+  const worktree = input.worktree;
+  if (!worktree || !worktree.name)
+    return [];
+  const items = [];
+  items.push({
+    id: "name",
+    content: worktree.name,
+    priority: PriorityLevel.LOW,
+    minWidth: 3,
+    idealWidth: 20,
+    hints: { truncatable: true, truncateSuffix: "\u2026" }
+  });
+  return items;
+}
+var worktreeSection = {
+  id: WORKTREE_SECTION_ID,
+  name: "Worktree",
+  priority: PriorityLevel.LOW,
+  items: [],
+  visibleWhen: (ctx) => !!ctx.input?.worktree?.name,
+  minItems: 0
+};
+function createWorktreeSection(ctx) {
+  return {
+    ...worktreeSection,
+    items: createWorktreeItems(ctx.input)
+  };
+}
+
+// packages/core/dist/sections/cursor-extensions.js
+var CURSOR_EXTENSIONS_SECTION_ID = "cursor-extensions";
+function createCursorExtensionsItems(input) {
+  const extensions = input.cursorExtensions;
+  if (!extensions)
+    return [];
+  const items = [];
+  if (extensions.maxMode) {
+    items.push({
+      id: "maxMode",
+      content: extensions.maxMode,
+      priority: PriorityLevel.MEDIUM,
+      minWidth: 3,
+      idealWidth: 10,
+      hints: { truncatable: false }
+    });
+  }
+  if (extensions.paramSummary) {
+    items.push({
+      id: "paramSummary",
+      content: extensions.paramSummary,
+      priority: PriorityLevel.LOW,
+      minWidth: 5,
+      idealWidth: 20,
+      hints: { truncatable: true, truncateSuffix: "\u2026" }
+    });
+  }
+  if (extensions.autorun !== void 0) {
+    items.push({
+      id: "autorun",
+      content: extensions.autorun ? "autorun" : "",
+      priority: PriorityLevel.LOW,
+      minWidth: 0,
+      idealWidth: 7,
+      hints: { truncatable: false }
+    });
+  }
+  return items;
+}
+var cursorExtensionsSection = {
+  id: CURSOR_EXTENSIONS_SECTION_ID,
+  name: "Cursor Extensions",
+  priority: PriorityLevel.LOW,
+  items: [],
+  visibleWhen: (ctx) => !!ctx.input?.cursorExtensions,
+  minItems: 0
+};
+function createCursorExtensionsSection(ctx) {
+  return {
+    ...cursorExtensionsSection,
+    items: createCursorExtensionsItems(ctx.input)
+  };
+}
+
+// packages/core/dist/sections/overhead.js
+var OVERHEAD_WARN = 5;
+var OVERHEAD_CRIT = 20;
+var OVERHEAD_SECTION_ID = "overhead";
+function createOverheadItems(input) {
+  const overhead = input.overhead;
+  if (!overhead)
+    return [];
+  const items = [];
+  if (!overhead.show) {
+    return [];
+  }
+  if (overhead.costPerCall !== void 0) {
+    items.push({
+      id: "costPerCall",
+      content: (ctx) => renderOverheadCost(ctx.input.overhead, ctx.config),
+      priority: PriorityLevel.MEDIUM,
+      minWidth: 8,
+      idealWidth: 16,
+      hints: { truncatable: false }
+    });
+  }
+  if (overhead.breakEven !== void 0) {
+    items.push({
+      id: "breakEven",
+      content: (ctx) => `\x1B[2mnew@${ctx.input.overhead.breakEven}\x1B[0m`,
+      priority: PriorityLevel.LOW,
+      minWidth: 6,
+      idealWidth: 10,
+      hints: { truncatable: false }
+    });
+  }
+  if (overhead.compactCost !== void 0) {
+    items.push({
+      id: "compactCost",
+      content: (ctx) => `\x1B[2mcompact ${formatOverheadCost(ctx.input.overhead.compactCost)}\x1B[0m`,
+      priority: PriorityLevel.LOW,
+      minWidth: 10,
+      idealWidth: 18,
+      hints: { truncatable: false }
+    });
+  }
+  if (overhead.isCold && overhead.coldCost !== void 0) {
+    items.push({
+      id: "cold",
+      content: (ctx) => `\x1B[31mcold +${formatOverheadCost(ctx.input.overhead.coldCost)}\x1B[0m`,
+      priority: PriorityLevel.HIGH,
+      minWidth: 8,
+      idealWidth: 14,
+      hints: { truncatable: false }
+    });
+  }
+  return items;
+}
+function renderOverheadCost(overhead, config) {
+  const cost = overhead.costPerCall;
+  const costCents = Math.round(cost * 100);
+  const warn = config?.overheadWarn ?? OVERHEAD_WARN;
+  const crit = config?.overheadCrit ?? OVERHEAD_CRIT;
+  let color = "\x1B[32m";
+  if (costCents >= crit)
+    color = "\x1B[31m";
+  else if (costCents >= warn)
+    color = "\x1B[33m";
+  return `${color}+${formatOverheadCost(cost)}/call\x1B[0m`;
+}
+function formatOverheadCost(cost) {
+  if (cost >= 1)
+    return `$${cost.toFixed(2)}`;
+  if (cost >= 0.01)
+    return `$${cost.toFixed(2)}`;
+  return `$${cost.toFixed(4)}`;
+}
+var overheadSection = {
+  id: OVERHEAD_SECTION_ID,
+  name: "Overhead",
+  priority: PriorityLevel.MEDIUM,
+  items: [],
+  visibleWhen: (ctx) => !!ctx.input?.overhead?.show,
+  minItems: 0
+};
+function createOverheadSection(ctx) {
+  return {
+    ...overheadSection,
+    items: createOverheadItems(ctx.input)
+  };
+}
+
+// packages/core/dist/sections/index.js
+var DEFAULT_SECTIONS2 = [
+  modelSection,
+  contextSection,
+  costSection,
+  cacheSection,
+  overheadSection,
+  rateLimitsSection,
+  usageSection,
+  vimSection,
+  worktreeSection,
+  cursorExtensionsSection
+];
+var SECTION_FACTORIES = {
+  model: createModelSection,
+  context: createContextSection,
+  cost: createCostSection,
+  cache: createCacheSection,
+  overhead: createOverheadSection,
+  "rate-limits": createRateLimitsSection,
+  usage: createUsageSection,
+  vim: createVimSection,
+  worktree: createWorktreeSection,
+  "cursor-extensions": createCursorExtensionsSection
+};
+function getSections(config, ctx) {
+  const result = [];
+  for (const baseSection of DEFAULT_SECTIONS2) {
+    const sectionConfig = config.sections?.[baseSection.id];
+    if (sectionConfig?.enabled === false)
+      continue;
+    const factory = SECTION_FACTORIES[baseSection.id];
+    if (!factory)
+      continue;
+    let section = factory(ctx);
+    if (sectionConfig) {
+      if (sectionConfig.priority !== void 0) {
+        section = { ...section, priority: parsePriority(sectionConfig.priority) };
+      }
+      if (sectionConfig.minItems !== void 0) {
+        section = { ...section, minItems: sectionConfig.minItems };
+      }
+    }
+    const itemsConfig = config.items ?? {};
+    section = {
+      ...section,
+      items: section.items.map((item) => {
+        const itemConfig = itemsConfig[`${section.id}.${item.id}`] ?? itemsConfig[item.id];
+        if (!itemConfig)
+          return item;
+        const overrides = {};
+        if (itemConfig.enabled === false)
+          return null;
+        if (itemConfig.priority !== void 0)
+          overrides.priority = parsePriority(itemConfig.priority);
+        if (itemConfig.minWidth !== void 0)
+          overrides.minWidth = itemConfig.minWidth;
+        return { ...item, ...overrides };
+      }).filter((item) => item !== null)
+    };
+    if (config.priorityThreshold !== void 0) {
+      const threshold = parsePriority(config.priorityThreshold);
+      section = {
+        ...section,
+        items: section.items.filter((item) => item.priority >= threshold)
+      };
+    }
+    if (section.items.length === 0)
+      continue;
+    result.push(section);
+  }
+  return result;
+}
+
+// packages/core/dist/colors.js
+var RESET2 = "\x1B[0m";
+var BOLD = "\x1B[1m";
+var DIM2 = "\x1B[2m";
+var ITALIC = "\x1B[3m";
+var UNDERLINE = "\x1B[4m";
+var BLACK = "\x1B[30m";
+var RED2 = "\x1B[31m";
+var GREEN2 = "\x1B[32m";
+var YELLOW2 = "\x1B[33m";
+var BLUE = "\x1B[34m";
+var MAGENTA = "\x1B[35m";
+var CYAN2 = "\x1B[36m";
+var WHITE = "\x1B[37m";
+var GRAY = "\x1B[90m";
+var BRIGHT_BLACK = "\x1B[90m";
+var BRIGHT_RED = "\x1B[91m";
+var BRIGHT_GREEN = "\x1B[92m";
+var BRIGHT_YELLOW = "\x1B[93m";
+var BRIGHT_BLUE = "\x1B[94m";
+var BRIGHT_MAGENTA = "\x1B[95m";
+var BRIGHT_CYAN = "\x1B[96m";
+var BRIGHT_WHITE = "\x1B[97m";
+function colorize(text, color) {
+  return `${color}${text}${RESET2}`;
+}
+var style = {
+  reset: (text) => `${RESET2}${text}${RESET2}`,
+  bold: (text) => `${BOLD}${text}${RESET2}`,
+  dim: (text) => `${DIM2}${text}${RESET2}`,
+  italic: (text) => `${ITALIC}${text}${RESET2}`,
+  underline: (text) => `${UNDERLINE}${text}${RESET2}`,
+  // Colors
+  black: (text) => colorize(text, BLACK),
+  red: (text) => colorize(text, RED2),
+  green: (text) => colorize(text, GREEN2),
+  yellow: (text) => colorize(text, YELLOW2),
+  blue: (text) => colorize(text, BLUE),
+  magenta: (text) => colorize(text, MAGENTA),
+  cyan: (text) => colorize(text, CYAN2),
+  white: (text) => colorize(text, WHITE),
+  gray: (text) => colorize(text, GRAY),
+  // Bright colors
+  brightRed: (text) => colorize(text, BRIGHT_RED),
+  brightGreen: (text) => colorize(text, BRIGHT_GREEN),
+  brightYellow: (text) => colorize(text, BRIGHT_YELLOW),
+  brightBlue: (text) => colorize(text, BRIGHT_BLUE),
+  brightMagenta: (text) => colorize(text, BRIGHT_MAGENTA),
+  brightCyan: (text) => colorize(text, BRIGHT_CYAN),
+  brightWhite: (text) => colorize(text, BRIGHT_WHITE)
+};
+var sectionColors = {
+  model: style.cyan,
+  context: style.green,
+  cost: style.yellow,
+  cache: style.blue,
+  "rate-limits": style.magenta,
+  usage: style.white,
+  vim: style.gray,
+  worktree: style.gray,
+  "cursor-extensions": style.gray
+};
+var priorityColors = {
+  critical: style.bold,
+  high: style.white,
+  medium: style.gray,
+  low: style.dim,
+  none: style.dim
+};
+var colors = {
+  RESET: RESET2,
+  BOLD,
+  DIM: DIM2,
+  BLACK,
+  RED: RED2,
+  GREEN: GREEN2,
+  YELLOW: YELLOW2,
+  BLUE,
+  MAGENTA,
+  CYAN: CYAN2,
+  WHITE,
+  GRAY,
+  BRIGHT_BLACK,
+  BRIGHT_RED,
+  BRIGHT_GREEN,
+  BRIGHT_YELLOW,
+  BRIGHT_BLUE,
+  BRIGHT_MAGENTA,
+  BRIGHT_CYAN,
+  BRIGHT_WHITE,
+  colorize,
+  ...style,
+  sectionColors,
+  priorityColors
+};
+
+// packages/core/dist/renderers/cli.js
+var CliRenderer = class {
+  target = "cli";
+  render(layout, ctx) {
+    const sectionSeparator = this.getSectionSeparator(ctx);
+    return this.renderSections(layout, ctx, sectionSeparator);
+  }
+  measureItem(item, ctx) {
+    const content = this.resolveContent(item, ctx);
+    return content.replace(/\x1b\[[0-9;]*m/g, "").length;
+  }
+  renderItem(item, ctx) {
+    return this.resolveContent(item, ctx);
+  }
+  join(items, separator) {
+    return items.join(separator);
+  }
+  getItemSeparator(ctx) {
+    return style.dim(" | ");
+  }
+  getSectionSeparator(ctx) {
+    return style.dim(" | ");
+  }
+  /**
+   * Render section items with separators.
+   */
+  renderSectionItems(section, ctx) {
+    return section.items.map((item) => this.renderItem(item, ctx));
+  }
+  /**
+   * Render all sections with section separators.
+   */
+  renderSections(layout, ctx, sectionSeparator) {
+    const renderedSections = layout.sections.map((section) => {
+      const items = this.renderSectionItems(section, ctx);
+      if (items.length === 0)
+        return null;
+      const itemSeparator = this.getItemSeparator(ctx);
+      return this.join(items, itemSeparator);
+    }).filter((s) => s !== null);
+    return this.join(renderedSections, sectionSeparator);
+  }
+  /**
+   * Resolve item content to string.
+   */
+  resolveContent(item, ctx) {
+    if (typeof item.content === "string") {
+      return item.content;
+    }
+    if (typeof item.content === "function") {
+      return item.content(ctx);
+    }
+    if ("template" in item.content) {
+      const { template, values, fallback } = item.content;
+      try {
+        return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? fallback ?? ""));
+      } catch {
+        return fallback ?? "";
+      }
+    }
+    if ("parts" in item.content) {
+      return item.content.parts.map((p) => p.text).join("");
+    }
+    return "";
+  }
+};
+var cliRenderer = new CliRenderer();
+
+// packages/core/dist/renderers/vscode.js
+var VSCodeRenderer = class {
+  target = "vscode";
+  render(layout, ctx) {
+    const items = [];
+    for (let i = 0; i < layout.sections.length; i++) {
+      const section = layout.sections[i];
+      for (let j = 0; j < section.items.length; j++) {
+        const item = section.items[j];
+        const rendered = this.renderItem(item, ctx);
+        if (rendered) {
+          items.push(rendered);
+        }
+      }
+      if (i < layout.sections.length - 1) {
+        items.push(this.getSectionSeparatorItem());
+      }
+    }
+    return items;
+  }
+  measureItem(item, ctx) {
+    const content = this.resolveContent(item, ctx);
+    return content.length;
+  }
+  renderItem(item, ctx) {
+    const content = this.resolveContent(item, ctx);
+    return {
+      text: content,
+      tooltip: this.getTooltip(item, ctx),
+      color: this.getItemColor(item),
+      priority: this.getItemPriority(item)
+    };
+  }
+  join(items, separator) {
+    if (items.length === 0)
+      return [];
+    if (items.length === 1)
+      return items;
+    const result = [items[0]];
+    for (let i = 1; i < items.length; i++) {
+      result.push(separator);
+      result.push(items[i]);
+    }
+    return result;
+  }
+  resolveContent(item, ctx) {
+    if (typeof item.content === "string") {
+      return item.content;
+    }
+    if (typeof item.content === "function") {
+      return item.content(ctx);
+    }
+    if ("template" in item.content) {
+      const { template, values, fallback } = item.content;
+      try {
+        return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? fallback ?? ""));
+      } catch {
+        return fallback ?? "";
+      }
+    }
+    if ("parts" in item.content) {
+      return item.content.parts.map((p) => p.text).join("");
+    }
+    return "";
+  }
+  getTooltip(item, ctx) {
+    return `${item.id}: ${this.resolveContent(item, ctx)}`;
+  }
+  getItemColor(item) {
+    if (item.priority >= 100)
+      return "var(--statusBarItem.errorBackground)";
+    if (item.priority >= 70)
+      return "var(--statusBarItem.warningBackground)";
+    return void 0;
+  }
+  getItemPriority(item) {
+    return 100 - item.priority / 100 * 50;
+  }
+  getSectionSeparatorItem() {
+    return {
+      text: "$(dash)",
+      color: "var(--statusBarItem.remoteBackground)"
+    };
+  }
+};
+var vscodeRenderer = new VSCodeRenderer();
+
+// packages/core/dist/renderers/neovim.js
+var NeovimRenderer = class {
+  target = "neovim";
+  render(layout, ctx) {
+    const components = [];
+    for (let i = 0; i < layout.sections.length; i++) {
+      const section = layout.sections[i];
+      for (let j = 0; j < section.items.length; j++) {
+        const item = section.items[j];
+        const component = this.renderItem(item, ctx);
+        if (component) {
+          if (j > 0) {
+            components.push(this.getItemSeparatorComponent());
+          }
+          components.push(component);
+        }
+      }
+      if (i < layout.sections.length - 1) {
+        components.push(this.getSectionSeparatorComponent());
+      }
+    }
+    return components;
+  }
+  measureItem(item, ctx) {
+    const content = this.resolveContent(item, ctx);
+    return content.length;
+  }
+  renderItem(item, ctx) {
+    const content = this.resolveContent(item, ctx);
+    return {
+      provider: content,
+      hl: this.getHighlightGroup(item),
+      separator: { right: "" }
+    };
+  }
+  join(items, separator) {
+    if (items.length === 0)
+      return [];
+    if (items.length === 1)
+      return items;
+    const result = [items[0]];
+    for (let i = 1; i < items.length; i++) {
+      result.push(separator);
+      result.push(items[i]);
+    }
+    return result;
+  }
+  resolveContent(item, ctx) {
+    if (typeof item.content === "string") {
+      return item.content;
+    }
+    if (typeof item.content === "function") {
+      return item.content(ctx);
+    }
+    if ("template" in item.content) {
+      const { template, values, fallback } = item.content;
+      try {
+        return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? fallback ?? ""));
+      } catch {
+        return fallback ?? "";
+      }
+    }
+    if ("parts" in item.content) {
+      return item.content.parts.map((p) => p.text).join("");
+    }
+    return "";
+  }
+  getHighlightGroup(item) {
+    if (item.priority >= 100)
+      return "StatusLineCritical";
+    if (item.priority >= 70)
+      return "StatusLineHigh";
+    if (item.priority >= 30)
+      return "StatusLineMedium";
+    if (item.priority >= 10)
+      return "StatusLineLow";
+    return "StatusLineNone";
+  }
+  getItemSeparatorComponent() {
+    return {
+      provider: "\u2502",
+      hl: "StatusLineSeparator"
+    };
+  }
+  getSectionSeparatorComponent() {
+    return {
+      provider: "\u2502",
+      hl: "StatusLineSectionSeparator"
+    };
+  }
+};
+var neovimRenderer = new NeovimRenderer();
+
+// packages/core/dist/renderers/opencode.js
+var OpenCodeRenderer = class {
+  target = "opencode";
+  render(layout, ctx) {
+    const components = [];
+    for (let i = 0; i < layout.sections.length; i++) {
+      const section = layout.sections[i];
+      for (let j = 0; j < section.items.length; j++) {
+        const item = section.items[j];
+        const component = this.renderItem(item, ctx);
+        if (component) {
+          if (j > 0) {
+            components.push(this.getItemSeparatorComponent());
+          }
+          components.push(component);
+        }
+      }
+      if (i < layout.sections.length - 1) {
+        components.push(this.getSectionSeparatorComponent());
+      }
+    }
+    return components;
+  }
+  measureItem(item, ctx) {
+    const content = this.resolveContent(item, ctx);
+    return content.length;
+  }
+  renderItem(item, ctx) {
+    const content = this.resolveContent(item, ctx);
+    return {
+      type: "text",
+      content,
+      style: this.getStyle(item.priority),
+      color: this.getColor(item.priority)
+    };
+  }
+  join(items, separator) {
+    if (items.length === 0)
+      return [];
+    if (items.length === 1)
+      return items;
+    const result = [items[0]];
+    for (let i = 1; i < items.length; i++) {
+      result.push(separator);
+      result.push(items[i]);
+    }
+    return result;
+  }
+  resolveContent(item, ctx) {
+    if (typeof item.content === "string") {
+      return item.content;
+    }
+    if (typeof item.content === "function") {
+      return item.content(ctx);
+    }
+    if ("template" in item.content) {
+      const { template, values, fallback } = item.content;
+      try {
+        return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? fallback ?? ""));
+      } catch {
+        return fallback ?? "";
+      }
+    }
+    if ("parts" in item.content) {
+      return item.content.parts.map((p) => p.text).join("");
+    }
+    return "";
+  }
+  getStyle(priority) {
+    if (priority >= 100)
+      return "bold";
+    if (priority >= 70)
+      return "normal";
+    if (priority >= 30)
+      return "normal";
+    if (priority >= 10)
+      return "dim";
+    return "dim";
+  }
+  getColor(priority) {
+    if (priority >= 100)
+      return "#ff6b6b";
+    if (priority >= 70)
+      return "#ffd93d";
+    if (priority >= 30)
+      return "#ffffff";
+    if (priority >= 10)
+      return "#a0a0a0";
+    return "#606060";
+  }
+  getItemSeparatorComponent() {
+    return {
+      type: "separator",
+      content: "\u2502",
+      style: "dim",
+      color: "#606060"
+    };
+  }
+  getSectionSeparatorComponent() {
+    return {
+      type: "separator",
+      content: "\u2502",
+      style: "dim",
+      color: "#808080"
+    };
+  }
+};
+var opencodeRenderer = new OpenCodeRenderer();
+
+// dist/formatter.js
+function adaptInputForCore(unified, prices) {
+  const { model, context, usage: usage2, cost, cache, rateLimits, extensions } = unified;
+  const overhead = calculateOverhead(unified, prices);
+  const costMultiplier = matchModelPrice2(prices, model.displayName, "Claude Sonnet 5.5", extensions.fastMode === true);
+  return {
+    model: {
+      name: model.displayName,
+      effort: model.capabilities.effortLevel,
+      costMultiplier: costMultiplier !== null && costMultiplier !== 1 ? costMultiplier : null,
+      id: model.id
+    },
+    context: {
+      percentage: context.usedPercentage,
+      tokensUsed: (usage2.inputTokens ?? 0) + (usage2.outputTokens ?? 0),
+      tokensTotal: context.maxTokens
+    },
+    cost: {
+      session: cost.sessionCostUsd,
+      total: cost.totalCostUsd
+    },
+    cache: cache.ttlSeconds !== null ? {
+      status: cache.warm ? "warm" : "cold",
+      hitRatio: cache.hitRatio,
+      expiresAt: cache.expiresAt
+    } : null,
+    rateLimits: rateLimits.map((r) => ({
+      window: r.id,
+      limit: r.limit,
+      remaining: r.limit !== null ? r.limit - r.limit * (r.usedPercentage ?? 0) / 100 : 0,
+      resetsAt: r.resetsAt
+    })),
+    overhead,
+    usage: {
+      totalTokens: (usage2.inputTokens ?? 0) + (usage2.outputTokens ?? 0),
+      cacheTokens: cache.recacheTokensIfCold
+    },
+    vim: extensions.vimMode ? { mode: extensions.vimMode } : null,
+    worktree: extensions.worktree ? { name: extensions.worktree.name } : null,
+    cursorExtensions: extensions.maxMode || extensions.paramSummary || extensions.autorun ? {
+      maxMode: extensions.maxMode,
+      paramSummary: extensions.paramSummary,
+      autorun: extensions.autorun
+    } : null
+  };
+}
+function calculateOverhead(unified, prices) {
+  const { cache, model, extensions } = unified;
+  const ctoks = cache.recacheTokensIfCold;
+  const freshTokens = 25e3;
+  if (ctoks == null || cache.ttlSeconds == null || ctoks <= freshTokens) {
+    return { show: false };
+  }
+  const modelPrices = prices.models[model.displayName] || prices.models[`Claude ${model.displayName}`] || prices.models[model.displayName.toLowerCase()] || prices.models[`claude ${model.displayName.toLowerCase()}`];
+  if (!modelPrices) {
+    return { show: false };
+  }
+  const pin = extensions.fastMode === true && modelPrices.fast_in ? modelPrices.fast_in : modelPrices.in;
+  const pout = modelPrices.out;
+  const wmul = cache.ttlSeconds === 3600 ? 2 : 1.25;
+  const d = ctoks - freshTokens;
+  const oCall = d * 0.1 * pin / 1e6;
+  const oCold = d * wmul * pin / 1e6;
+  const oBe = freshTokens * wmul / (d * 0.1);
+  const summaryTokens = 8e3;
+  const oCompact = (ctoks * 0.1 * pin + summaryTokens * pout + (freshTokens + summaryTokens) * wmul * pin) / 1e6;
+  return {
+    show: true,
+    costPerCall: oCall,
+    breakEven: Math.ceil(oBe) < 1 ? 1 : Math.ceil(oBe),
+    compactCost: oCompact,
+    isCold: !cache.warm,
+    coldCost: oCold
+  };
+}
+function buildUserConfig(options) {
+  const config = {
+    sections: {},
+    items: {},
+    priorityThreshold: PriorityLevel.NONE
+  };
+  if (options.sections) {
+    const enabledSections = new Set(options.sections.split(",").map((s) => s.trim()));
+    const sectionMap = {
+      "model": "model",
+      "context": "context",
+      "tokens": "usage",
+      "cost": "cost",
+      "overhead": "overhead",
+      "cache": "cache",
+      "stats": "cache",
+      // stats is part of cache (hit ratio)
+      "resets": "rate-limits",
+      "vim": "vim",
+      "worktree": "worktree",
+      "cursor-extensions": "cursor-extensions"
+    };
+    config.sections = config.sections || {};
+    for (const [legacyName, newId] of Object.entries(sectionMap)) {
+      const isEnabled = enabledSections.has(legacyName);
+      if (isEnabled || !(newId in config.sections)) {
+        config.sections[newId] = { enabled: isEnabled };
+      }
+    }
+  }
+  if (options.resets) {
+    const enabledResets = new Set(options.resets.split(",").map((s) => s.trim()));
+    config.sections = config.sections || {};
+    config.sections["rate-limits"] = config.sections["rate-limits"] || { enabled: true };
+    config.sections["rate-limits"].resets = Array.from(enabledResets);
+  }
+  if (options.contextWarn !== void 0)
+    config.contextWarn = options.contextWarn;
+  if (options.contextCrit !== void 0)
+    config.contextCrit = options.contextCrit;
+  if (options.cacheWarn !== void 0)
+    config.cacheWarn = options.cacheWarn;
+  if (options.cacheCrit !== void 0)
+    config.cacheCrit = options.cacheCrit;
+  if (options.resetWarn !== void 0)
+    config.resetWarn = options.resetWarn;
+  if (options.resetCrit !== void 0)
+    config.resetCrit = options.resetCrit;
+  if (options.overheadWarn !== void 0)
+    config.overheadWarn = options.overheadWarn;
+  if (options.overheadCrit !== void 0)
+    config.overheadCrit = options.overheadCrit;
+  return config;
+}
+async function formatStatusLine2(unified, options = {}) {
+  const { width = 120, margin = 3, pricesTtl = 3600, claudeConfigDir } = options;
+  const isWidthConstrained = width > 0;
+  const effectiveWidth = width > 0 ? width : 120;
+  const effectiveMargin = margin > 0 ? margin : 3;
+  try {
+    const prices = await loadPrices2(claudeConfigDir || "", pricesTtl);
+    const adaptedInput = adaptInputForCore(unified, prices);
+    const userConfig = buildUserConfig(options);
+    const ctx = {
+      input: adaptedInput,
+      width: effectiveWidth - effectiveMargin,
+      target: "cli",
+      config: userConfig,
+      // Pass whether width is constrained (for layout engine)
+      widthConstrained: isWidthConstrained
+    };
+    const sections = getSections(userConfig, ctx);
+    const layout = buildLayout(sections, ctx);
+    const output = cliRenderer.render(layout, ctx);
+    return output;
+  } catch (error) {
+    console.error("[statusline] New pipeline failed, falling back to legacy:", error);
+    return formatStatusLine(unified, options);
+  }
 }
 var DEFAULT_SECTION_CONFIGS = {
   "claude-code": [
@@ -1207,13 +2838,13 @@ function buildSectionsString(agentType, customSections) {
 }
 
 // dist/statusline.js
-var __filename4 = fileURLToPath4(import.meta.url);
-var __dirname4 = join5(__filename4, "..");
+var __filename5 = fileURLToPath5(import.meta.url);
+var __dirname5 = join6(__filename5, "..");
 function getEnv(key) {
   return process.env[key];
 }
 function getClaudeConfigDirFromEnv() {
-  return getEnv("CLAUDE_CONFIG_DIR") || join5(process.env.HOME || "~", ".claude");
+  return getEnv("CLAUDE_CONFIG_DIR") || join6(process.env.HOME || "~", ".claude");
 }
 async function loadSettings(claudeConfigDir) {
   const config = await loadConfig(claudeConfigDir);
@@ -1264,14 +2895,14 @@ async function generateStatusLine(input) {
   }
   if (settings.dumpPath) {
     try {
-      const { promises: fs6 } = await import("fs");
-      await fs6.writeFile(settings.dumpPath, input);
+      const { promises: fs7 } = await import("fs");
+      await fs7.writeFile(settings.dumpPath, input);
     } catch {
     }
   }
-  const pricesPath = join5(claudeConfigDir, "model-prices.json");
+  const pricesPath = join6(claudeConfigDir, "model-prices.json");
   try {
-    const stat = await import("fs").then((fs6) => fs6.promises.stat(pricesPath));
+    const stat = await import("fs").then((fs7) => fs7.promises.stat(pricesPath));
     const age = Date.now() - stat.mtimeMs;
     if (age >= settings.pricesTtl * 1e3) {
       Promise.resolve().then(() => (init_refresh_prices(), refresh_prices_exports)).then(({ refreshPrices: refreshPrices2 }) => {
@@ -1289,7 +2920,7 @@ async function generateStatusLine(input) {
   if (sections === DEFAULT_SECTIONS) {
     sections = buildSectionsString(unifiedInput.agent);
   }
-  const line = await formatStatusLine(unifiedInput, {
+  const line = await formatStatusLine2(unifiedInput, {
     width: settings.width,
     margin: settings.margin,
     sections,
@@ -1318,17 +2949,17 @@ async function generateStatusLine(input) {
 
 // dist/config.js
 init_constants();
-import { fileURLToPath as fileURLToPath5 } from "url";
+import { fileURLToPath as fileURLToPath6 } from "url";
 init_prices();
 
 // src/utils/config-utils.ts
-import { join as join6 } from "path";
+import { join as join7 } from "path";
 function getClaudeConfigDir() {
-  return process.env.CLAUDE_CONFIG_DIR || join6(process.env.HOME || "~", ".claude");
+  return process.env.CLAUDE_CONFIG_DIR || join7(process.env.HOME || "~", ".claude");
 }
 
 // dist/config.js
-var __filename5 = fileURLToPath5(import.meta.url);
+var __filename6 = fileURLToPath6(import.meta.url);
 function parseArgs(argv) {
   if (argv.length === 0)
     return { command: "help", args: [] };
@@ -1713,46 +3344,46 @@ async function runConfig(argv) {
 init_refresh_prices();
 
 // dist/install.js
-import { join as join7 } from "path";
-import { promises as fs5 } from "fs";
-import { fileURLToPath as fileURLToPath6 } from "url";
-var __filename6 = fileURLToPath6(import.meta.url);
-var __dirname5 = join7(__filename6, "..");
+import { join as join8 } from "path";
+import { promises as fs6 } from "fs";
+import { fileURLToPath as fileURLToPath7 } from "url";
+var __filename7 = fileURLToPath7(import.meta.url);
+var __dirname6 = join8(__filename7, "..");
 async function copyScripts(srcDir, destDir) {
-  await fs5.mkdir(destDir, { recursive: true });
-  const isBundled = __filename6.includes("/bin/statusline") || __filename6.includes("\\bin\\statusline");
+  await fs6.mkdir(destDir, { recursive: true });
+  const isBundled = __filename7.includes("/bin/statusline") || __filename7.includes("\\bin\\statusline");
   if (isBundled) {
-    const executable = join7(__dirname5, "statusline");
-    const dest = join7(destDir, "statusline");
+    const executable = join8(__dirname6, "statusline");
+    const dest = join8(destDir, "statusline");
     try {
-      await fs5.copyFile(executable, dest);
-      await fs5.chmod(dest, 493);
+      await fs6.copyFile(executable, dest);
+      await fs6.chmod(dest, 493);
     } catch {
       console.warn("Could not find compiled executable, skipping copy");
     }
   } else {
     const jsScripts = ["statusline.js", "config.js", "refresh-prices.js"];
     for (const script of jsScripts) {
-      const src = join7(__dirname5, "..", "dist", script);
-      const dest = join7(destDir, script.replace(".js", ""));
+      const src = join8(__dirname6, "..", "dist", script);
+      const dest = join8(destDir, script.replace(".js", ""));
       try {
-        await fs5.copyFile(src, dest);
-        await fs5.chmod(dest, 493);
+        await fs6.copyFile(src, dest);
+        await fs6.chmod(dest, 493);
       } catch {
       }
     }
   }
 }
 async function configureSettings(claudeConfigDir, destDir, options) {
-  const settingsPath = join7(claudeConfigDir, "settings.json");
-  const executablePath = join7(destDir, "statusline");
+  const settingsPath = join8(claudeConfigDir, "settings.json");
+  const executablePath = join8(destDir, "statusline");
   const cmd = `node ${executablePath}`;
   try {
-    await fs5.access(settingsPath);
+    await fs6.access(settingsPath);
   } catch {
-    await fs5.writeFile(settingsPath, "{}");
+    await fs6.writeFile(settingsPath, "{}");
   }
-  const content = await fs5.readFile(settingsPath, "utf-8");
+  const content = await fs6.readFile(settingsPath, "utf-8");
   const settings = JSON.parse(content);
   const currentCmd = settings.statusLine?.command;
   if (currentCmd && currentCmd !== cmd && !options.force) {
@@ -1765,14 +3396,14 @@ async function configureSettings(claudeConfigDir, destDir, options) {
     refreshInterval: options.interval
   };
   const tmp = `${settingsPath}.${Date.now()}.tmp`;
-  await fs5.writeFile(tmp, JSON.stringify(settings, null, 2));
-  await fs5.rename(tmp, settingsPath);
+  await fs6.writeFile(tmp, JSON.stringify(settings, null, 2));
+  await fs6.rename(tmp, settingsPath);
   console.log(`statusLine set to: ${cmd} (refresh every ${options.interval}s)`);
 }
 async function install(options) {
   const claudeConfigDir = getClaudeConfigDir();
-  const destDir = join7(claudeConfigDir, "statusline");
-  const srcDir = join7(__dirname5, "..", "src");
+  const destDir = join8(claudeConfigDir, "statusline");
+  const srcDir = join8(__dirname6, "..", "src");
   await copyScripts(srcDir, destDir);
   if (options.configure) {
     await configureSettings(claudeConfigDir, destDir, options);

@@ -113,6 +113,8 @@ export interface RenderContext {
   config: UserConfig;
   /** Theme/color scheme */
   theme?: ThemeConfig;
+  /** Whether width is constrained (false for auto-detect/legacy behavior) */
+  widthConstrained?: boolean;
 }
 
 // User configuration for sections and items
@@ -127,6 +129,22 @@ export interface UserConfig {
   sectionSeparator?: string;
   /** Separator between items within a section */
   itemSeparator?: string;
+  /** Context warning threshold (percentage) */
+  contextWarn?: number;
+  /** Context critical threshold (percentage) */
+  contextCrit?: number;
+  /** Cache warning threshold (minutes) */
+  cacheWarn?: number;
+  /** Cache critical threshold (minutes) */
+  cacheCrit?: number;
+  /** Reset warning threshold (percentage) */
+  resetWarn?: number;
+  /** Reset critical threshold (percentage) */
+  resetCrit?: number;
+  /** Overhead warning threshold (cents) */
+  overheadWarn?: number;
+  /** Overhead critical threshold (cents) */
+  overheadCrit?: number;
 }
 
 // Section configuration override
@@ -137,6 +155,8 @@ export interface SectionConfig {
   priority?: Priority;
   /** Override minimum items to keep */
   minItems?: number;
+  /** Filter for rate-limits section (list of window IDs to show) */
+  resets?: string[];
 }
 
 // Item configuration override
@@ -166,4 +186,12 @@ export const DEFAULT_CONFIG: Required<UserConfig> = {
   priorityThreshold: Priority.NONE,
   sectionSeparator: " | ",
   itemSeparator: " ",
+  contextWarn: 50,
+  contextCrit: 80,
+  cacheWarn: 20,
+  cacheCrit: 5,
+  resetWarn: 50,
+  resetCrit: 80,
+  overheadWarn: 5,
+  overheadCrit: 20,
 };

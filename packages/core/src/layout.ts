@@ -3,6 +3,9 @@
  * 
  * Takes sections with items and available width, returns a layout
  * with items fitted according to priority.
+ * 
+ * First tries to fit all items in section order (legacy behavior).
+ * Only applies priority-based shrinking if content overflows.
  */
 
 import type { Section, SectionItem, SectionLayout, RenderContext, Priority } from "./model.js";
@@ -40,21 +43,53 @@ export function estimateWidth(item: SectionItem, ctx: RenderContext): number {
 }
 
 /**
- * Build layout by fitting sections/items into available width using priority-based shrinking.
- * 
- * Algorithm:
- * 1. Filter visible sections/items
- * 2. Compute composite priority for each item (sectionPriority * 1000 + itemPriority)
- * 3. Sort all items by composite priority descending
- * 4. Greedy fit: try to add each item in priority order
- * 5. For CRITICAL items that don't fit, evict lowest non-critical item
- * 6. Re-group by section, preserve original section order
+ * Calculate total width of sections in section order (legacy behavior).
+ */
+function calculateSectionOrderWidth(sections: Section[], ctx: RenderContext, availableWidth: number): { width: number; fits: boolean } {
+  let width = 0;
+  
+  // First, compute estimated widths for all items
+  const sectionsWithWidth = sections.map((section) => ({
+    ...section,
+    items: section.items.map((item) => ({
+      ...item,
+      estimatedWidth: estimateWidth(item, ctx),
+    })),
+  }));
+  
+  for (let i = 0; i < sectionsWithWidth.length; i++) {
+    const section = sectionsWithWidth[i];
+    for (let j = 0; j < section.items.length; j++) {
+      width += section.items[j].estimatedWidth;
+      if (j > 0) width += ITEM_SEPARATOR_WIDTH;
+    }
+    if (i > 0 && section.items.length > 0) {
+      // Check if any previous section has items
+      const prevHasItems = sectionsWithWidth.slice(0, i).some((s) => s.items.length > 0);
+      if (prevHasItems) {
+        width += SECTION_SEPARATOR_WIDTH;
+      }
+    }
+    
+    // Early exit if already over width
+    if (width > availableWidth) {
+      return { width, fits: false };
+    }
+  }
+  
+  return { width, fits: true };
+}
+
+/**
+ * Build layout by fitting sections/items into available width.
+ * First tries section-order fit (legacy behavior), then priority-based shrinking if needed.
  */
 export function buildLayout(
   sections: Section[],
   ctx: RenderContext
 ): SectionLayout {
   const availableWidth = ctx.width;
+  const widthConstrained = ctx.widthConstrained ?? true;
   const droppedItems: Array<{ sectionId: string; itemId: string; priority: Priority }> = [];
 
   // 1. Filter visible sections and items, compute estimated widths
@@ -71,18 +106,28 @@ export function buildLayout(
     }))
     .filter((section) => section.items.length > 0);
 
-  // Calculate total width of all items (for meta)
-  let totalWidth = 0;
-  for (let i = 0; i < visibleSections.length; i++) {
-    const section = visibleSections[i];
-    for (let j = 0; j < section.items.length; j++) {
-      totalWidth += section.items[j].estimatedWidth;
-      if (j > 0) totalWidth += ITEM_SEPARATOR_WIDTH;
-    }
-    if (i > 0) totalWidth += SECTION_SEPARATOR_WIDTH;
+  // Calculate total width of all items in section order (for meta)
+  const { width: totalWidth, fits: sectionOrderFits } = calculateSectionOrderWidth(visibleSections, ctx, availableWidth);
+
+  // If width is not constrained (legacy auto mode), always use section-order fit
+  // If width is constrained but everything fits in section order, use that (legacy behavior)
+  if (!widthConstrained || sectionOrderFits) {
+    return {
+      sections: visibleSections.map(({ items, ...s }) => ({
+        ...s,
+        items: items.map(({ estimatedWidth, ...item }) => item),
+      })),
+      meta: {
+        totalWidth,
+        availableWidth,
+        overflow: false,
+        droppedItems: [],
+      },
+    };
   }
 
-  // 2. Create flat list of all items with composite priority
+  // 2. Otherwise, apply priority-based shrinking
+  // Create flat list of all items with composite priority
   const allItems: Array<{
     sectionId: string;
     sectionPriority: Priority;

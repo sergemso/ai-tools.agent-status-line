@@ -1,35 +1,17 @@
 /**
  * CLI Renderer - renders to ANSI-colored string for terminal output.
+ * 
+ * This renderer assumes sections provide pre-colored content (matching legacy behavior).
+ * It does NOT apply additional priority-based styling.
  */
 
 import type { Section, SectionItem, SectionLayout, RenderContext } from "../model.js";
 import type { Renderer } from "../renderer.js";
-import { colors, style } from "../colors.js";
+import { style } from "../colors.js";
 
 /** CLI Renderer - outputs ANSI-colored string */
 export class CliRenderer implements Renderer<string, string> {
   readonly target = "cli" as const;
-  
-  /** Color scheme for different section/item types */
-  private colorScheme: Record<string, (text: string) => string> = {
-    // Section colors
-    model: colors.cyan,
-    context: colors.green,
-    cost: colors.yellow,
-    cache: colors.blue,
-    "rate-limits": colors.magenta,
-    usage: colors.white,
-    vim: colors.gray,
-    worktree: colors.gray,
-    "cursor-extensions": colors.gray,
-    
-    // Item colors by priority
-    critical: colors.bold,
-    high: colors.white,
-    medium: colors.gray,
-    low: colors.dim,
-    none: colors.dim,
-  };
   
   render(layout: SectionLayout, ctx: RenderContext): string {
     const sectionSeparator = this.getSectionSeparator(ctx);
@@ -42,15 +24,7 @@ export class CliRenderer implements Renderer<string, string> {
   }
   
   renderItem(item: SectionItem, ctx: RenderContext): string {
-    let content = this.resolveContent(item, ctx);
-    
-    // Apply priority-based styling
-    const priorityStyle = this.getPriorityStyle(item.priority);
-    if (priorityStyle) {
-      content = priorityStyle(content);
-    }
-    
-    return content;
+    return this.resolveContent(item, ctx);
   }
   
   join(items: string[], separator: string): string {
@@ -58,13 +32,13 @@ export class CliRenderer implements Renderer<string, string> {
   }
   
   protected getItemSeparator(ctx: RenderContext): string {
-    // Dim pipe separator
-    return ` ${style.dim("|")} `;
+    // Dim pipe separator with spaces (matches legacy)
+    return style.dim(" | ");
   }
   
   protected getSectionSeparator(ctx: RenderContext): string {
-    // Bright dim pipe separator
-    return ` ${style.dim("|")} `;
+    // Dim pipe separator with spaces (matches legacy)
+    return style.dim(" | ");
   }
   
   /**
@@ -111,17 +85,6 @@ export class CliRenderer implements Renderer<string, string> {
       return item.content.parts.map((p) => p.text).join("");
     }
     return "";
-  }
-  
-  /**
-   * Get style function based on priority.
-   */
-  private getPriorityStyle(priority: number): ((text: string) => string) | null {
-    if (priority >= 100) return this.colorScheme.critical;
-    if (priority >= 70) return this.colorScheme.high;
-    if (priority >= 30) return this.colorScheme.medium;
-    if (priority >= 10) return this.colorScheme.low;
-    return this.colorScheme.none;
   }
 }
 

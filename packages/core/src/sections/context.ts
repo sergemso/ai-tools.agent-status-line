@@ -6,6 +6,15 @@
 import type { Section, SectionItem, RenderContext } from "../model.js";
 import { PriorityLevel as P } from "../priority.js";
 
+// Block characters for context bar (8 levels)
+const BLOCK_CHARS = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
+const LEFT_BORDER = "▕";
+const RIGHT_BORDER = "▏";
+
+// Thresholds - match legacy defaults
+const CONTEXT_WARN = 50;
+const CONTEXT_CRIT = 80;
+
 /** Context section ID */
 export const CONTEXT_SECTION_ID = "context";
 
@@ -16,11 +25,11 @@ function createContextItems(input: any): SectionItem[] {
 
   const items: SectionItem[] = [];
 
-  // Context bar - HIGH
+  // Context bar with percentage and size - HIGH
   if (context.percentage !== undefined) {
     items.push({
       id: "bar",
-      content: (ctx: RenderContext) => renderContextBar(ctx.input.context),
+      content: (ctx: RenderContext) => renderContextBar(ctx.input.context, ctx.config),
       priority: P.HIGH,
       minWidth: 10,
       idealWidth: 20,
@@ -28,56 +37,38 @@ function createContextItems(input: any): SectionItem[] {
     });
   }
 
-  // Token count - MEDIUM
-  if (context.tokensUsed !== undefined || context.tokensTotal !== undefined) {
-    items.push({
-      id: "tokens",
-      content: (ctx: RenderContext) => renderTokenCount(ctx.input.context),
-      priority: P.MEDIUM,
-      minWidth: 5,
-      idealWidth: 15,
-      hints: { truncatable: false },
-    });
-  }
-
-  // Percentage - MEDIUM
-  if (context.percentage !== undefined) {
-    items.push({
-      id: "percentage",
-      content: (ctx: RenderContext) => `${Math.round(ctx.input.context.percentage)}%`,
-      priority: P.MEDIUM,
-      minWidth: 3,
-      idealWidth: 5,
-      hints: { truncatable: false },
-    });
-  }
-
   return items;
 }
 
-/** Render a visual context bar */
-function renderContextBar(context: any): string {
+/** Render a visual context bar with percentage and size - matches legacy formatter */
+function renderContextBar(context: any, config?: any): string {
   const pct = Math.min(100, Math.max(0, context.percentage ?? 0));
-  const width = 10;
-  const filled = Math.round((pct / 100) * width);
-  const empty = width - filled;
-  return "█".repeat(filled) + "░".repeat(empty);
-}
+  const width = 8; // 8 block characters
+  const blockIdx = Math.min(Math.floor(pct / 12.5), 7);
+  const fill = BLOCK_CHARS[blockIdx];
 
-/** Render token count as "used/total" */
-function renderTokenCount(context: any): string {
-  const used = context.tokensUsed ?? 0;
-  const total = context.tokensTotal ?? 0;
-  if (total > 0) {
-    return `${formatNumber(used)}/${formatNumber(total)}`;
-  }
-  return formatNumber(used);
+  // Determine color based on threshold (matching legacy)
+  const warn = config?.contextWarn ?? CONTEXT_WARN;
+  const crit = config?.contextCrit ?? CONTEXT_CRIT;
+  let color = "\x1b[32m"; // GREEN
+  if (pct >= crit) color = "\x1b[31m"; // RED
+  else if (pct >= warn) color = "\x1b[33m"; // YELLOW
+
+  const RESET = "\x1b[0m";
+  const ctxChar = `${color}${LEFT_BORDER}${fill}${RIGHT_BORDER}${RESET}`;
+  const ctxPct = `${color}${Math.round(pct)}%${RESET}`;
+
+  const sizeStr = context.tokensTotal
+    ? `${"\x1b[2m"}/${formatNumber(context.tokensTotal)}${RESET}`
+    : "";
+
+  return `${ctxChar} ${ctxPct}${sizeStr}`;
 }
 
 /** Format number with k/M suffix */
 function formatNumber(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + "k";
+  if (n >= 1_000_000) return Math.floor(n / 1_000_000) + "M";
+  if (n >= 1_000) return Math.floor(n / 1_000) + "k";
   return String(n);
 }
 

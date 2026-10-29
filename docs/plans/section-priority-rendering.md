@@ -187,7 +187,7 @@ function applyConfig(sections: Section[], config: UserConfig): Section[] {
 
 ## Phase 6: CLI Integration
 
-### 6.1 Refactor `src/formatter.ts` `[~]`
+### 6.1 Refactor `src/formatter.ts` `[x]`
 - Replace current formatting with `buildLayout + cliRenderer`
 - Maintain backward-compatible output for existing tests
 

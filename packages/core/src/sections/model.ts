@@ -16,38 +16,27 @@ function createModelItems(input: any): SectionItem[] {
 
   const items: SectionItem[] = [];
 
-  // Model name - CRITICAL
+  // Model name + effort combined - CRITICAL
+  // Legacy: `${cyan(modelDisplay)}${effortDisplay ? ` ${effortDisplay}` : ""}`
   if (model.name) {
     items.push({
       id: "name",
-      content: model.name,
+      content: (ctx: RenderContext) => renderModelName(ctx.input.model),
       priority: P.CRITICAL,
       minWidth: 3,
-      idealWidth: 20,
+      idealWidth: 30,
       hints: { truncatable: true, truncateSuffix: "…" },
     });
   }
 
-  // Model effort/reasoning - MEDIUM
-  if (model.effort) {
-    items.push({
-      id: "effort",
-      content: model.effort,
-      priority: P.MEDIUM,
-      minWidth: 2,
-      idealWidth: 8,
-      hints: { truncatable: false },
-    });
-  }
-
   // Cost multiplier - LOW
-  if (model.costMultiplier !== undefined && model.costMultiplier !== 1) {
+  if (model.costMultiplier !== undefined && model.costMultiplier !== 1 && model.costMultiplier !== null) {
     items.push({
       id: "costMultiplier",
-      content: (ctx: RenderContext) => `${model.costMultiplier}x`,
+      content: (ctx: RenderContext) => `\x1b[36m${model.name}\x1b[0m \x1b[2mx${model.costMultiplier.toFixed(1).replace(/\.0$/, "")}\x1b[0m`,
       priority: P.LOW,
-      minWidth: 3,
-      idealWidth: 6,
+      minWidth: 6,
+      idealWidth: 12,
       hints: { truncatable: false },
     });
   }
@@ -67,6 +56,42 @@ function createModelItems(input: any): SectionItem[] {
   return items;
 }
 
+/** Render model name with effort level - matches legacy formatter */
+function renderModelName(model: any): string {
+  const RESET = "\x1b[0m";
+  const CYAN = "\x1b[36m";
+  const DIM = "\x1b[2m";
+  const GREEN = "\x1b[32m";
+  const YELLOW = "\x1b[33m";
+  const RED = "\x1b[31m";
+
+  let modelDisplay = `${CYAN}${model.name}${RESET}`;
+  const effortLevel = model.effort;
+  
+  let effortDisplay = "";
+  switch (effortLevel) {
+    case "low":
+      effortDisplay = `${DIM}lo${RESET}`;
+      break;
+    case "medium":
+      effortDisplay = `${GREEN}med${RESET}`;
+      break;
+    case "high":
+      effortDisplay = `${YELLOW}hi${RESET}`;
+      break;
+    case "xhigh":
+      effortDisplay = `${RED}xhi${RESET}`;
+      break;
+    case "max":
+      effortDisplay = `${RED}max${RESET}`;
+      break;
+    default:
+      if (effortLevel) effortDisplay = `${DIM}${effortLevel}${RESET}`;
+  }
+
+  return `${modelDisplay}${effortDisplay ? ` ${effortDisplay}` : ""}`;
+}
+
 /** Model section definition */
 export const modelSection: Section = {
   id: MODEL_SECTION_ID,
@@ -79,8 +104,40 @@ export const modelSection: Section = {
 
 /** Factory function to create model section with items for a specific context */
 export function createModelSection(ctx: RenderContext): Section {
+  const model = ctx.input.model;
+  if (!model) return { ...modelSection, items: [] };
+
+  const items: SectionItem[] = [];
+
+  // Model name + effort combined - CRITICAL
+  if (model.name) {
+    items.push({
+      id: "name",
+      content: (ctx: RenderContext) => renderModelName(ctx.input.model),
+      priority: P.CRITICAL,
+      minWidth: 3,
+      idealWidth: 30,
+      hints: { truncatable: true, truncateSuffix: "…" },
+    });
+  }
+
+  // Cost multiplier - LOW
+  if (model.costMultiplier !== undefined && model.costMultiplier !== 1 && model.costMultiplier !== null) {
+    items.push({
+      id: "costMultiplier",
+      content: (ctx: RenderContext) => `\x1b[36m${model.name}\x1b[0m \x1b[2mx${model.costMultiplier.toFixed(1).replace(/\.0$/, "")}\x1b[0m`,
+      priority: P.LOW,
+      minWidth: 6,
+      idealWidth: 12,
+      hints: { truncatable: false },
+    });
+  }
+
+  // Model ID - NONE (debug only) - only include if explicitly enabled via config
+  // Not included by default
+
   return {
     ...modelSection,
-    items: createModelItems(ctx.input),
+    items,
   };
 }

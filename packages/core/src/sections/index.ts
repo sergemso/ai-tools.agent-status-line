@@ -15,6 +15,7 @@ export * from "./usage.js";
 export * from "./vim.js";
 export * from "./worktree.js";
 export * from "./cursor-extensions.js";
+export * from "./overhead.js";
 
 // Import factory functions
 import { createModelSection, modelSection } from "./model.js";
@@ -26,6 +27,7 @@ import { createUsageSection, usageSection } from "./usage.js";
 import { createVimSection, vimSection } from "./vim.js";
 import { createWorktreeSection, worktreeSection } from "./worktree.js";
 import { createCursorExtensionsSection, cursorExtensionsSection } from "./cursor-extensions.js";
+import { createOverheadSection, overheadSection } from "./overhead.js";
 
 /** Default sections in display order */
 export const DEFAULT_SECTIONS: Section[] = [
@@ -33,6 +35,7 @@ export const DEFAULT_SECTIONS: Section[] = [
   contextSection,
   costSection,
   cacheSection,
+  overheadSection,
   rateLimitsSection,
   usageSection,
   vimSection,
@@ -46,6 +49,7 @@ const SECTION_FACTORIES: Record<string, (ctx: RenderContext) => Section> = {
   context: createContextSection,
   cost: createCostSection,
   cache: createCacheSection,
+  overhead: createOverheadSection,
   "rate-limits": createRateLimitsSection,
   usage: createUsageSection,
   vim: createVimSection,
@@ -59,6 +63,7 @@ const SECTION_DEFINITIONS: Record<string, Section> = {
   context: contextSection,
   cost: costSection,
   cache: cacheSection,
+  overhead: overheadSection,
   "rate-limits": rateLimitsSection,
   usage: usageSection,
   vim: vimSection,
@@ -115,9 +120,10 @@ export function getSections(config: UserConfig, ctx: RenderContext): Section[] {
 
     // Apply global priority threshold
     if (config.priorityThreshold !== undefined) {
+      const threshold = parsePriority(config.priorityThreshold);
       section = {
         ...section,
-        items: section.items.filter((item) => item.priority >= config.priorityThreshold!),
+        items: section.items.filter((item) => item.priority >= threshold),
       };
     }
 
