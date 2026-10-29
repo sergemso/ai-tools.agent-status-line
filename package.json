@@ -14,7 +14,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src --ext .ts",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "checkpoint:phase1": "node scripts/checkpoint-phase1.js",
+    "checkpoint:phase2": "node scripts/checkpoint-phase2.js",
+    "checkpoint:phase3": "node scripts/checkpoint-phase3.js",
+    "checkpoint:phase4": "node scripts/checkpoint-phase4.js",
+    "checkpoint:phase5": "node scripts/checkpoint-phase5.js",
+    "checkpoint:phase6": "node scripts/checkpoint-phase6.js",
+    "checkpoint:phase7": "node scripts/checkpoint-phase7.js",
+    "checkpoint:all": "npm run checkpoint:phase1 && npm run checkpoint:phase2 && npm run checkpoint:phase3 && npm run checkpoint:phase4 && npm run checkpoint:phase5 && npm run checkpoint:phase6 && npm run checkpoint:phase7"
   },
   "keywords": [
     "claude-code",

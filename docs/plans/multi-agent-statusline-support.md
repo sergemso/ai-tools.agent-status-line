@@ -402,31 +402,31 @@ npm run checkpoint:phase1
 
 ## Phase 2: Unified Data Model & Adapter Interface (Week 2)
 
-### 2.1 Design Unified Internal Model `[ ]`
+### 2.1 Design Unified Internal Model `[x]`
 ```typescript
 // src/shared/unified-model.ts
 interface UnifiedStatusInput { ... }
 ```
 
-### 2.2 Create Adapter Interface `[ ]`
+### 2.2 Create Adapter Interface `[x]`
 ```typescript
 // src/adapters/adapter.ts
 export interface StatusLineAdapter<TInput = unknown> { ... }
 export class AdapterRegistry { ... }
 ```
 
-### 2.3 Implement Claude Code Adapter (Reference) `[ ]`
-- [ ] Move parsing logic from `statusline.ts` → `src/adapters/claude-code.ts`
-- [ ] Ensure 100% backward compatibility
-- [ ] Export as default adapter
+### 2.3 Implement Claude Code Adapter (Reference) `[x]`
+- [x] Move parsing logic from `statusline.ts` → `src/adapters/claude-code.ts`
+- [x] Ensure 100% backward compatibility
+- [x] Export as default adapter
 
-### 2.4 Deliverables `[ ]`
-- [ ] `src/shared/unified-model.ts` - Type definitions
-- [ ] `src/adapters/adapter.ts` - Interface & registry
-- [ ] `src/adapters/claude-code.ts` - Reference implementation
-- [ ] `src/adapters/index.ts` - Barrel exports
+### 2.4 Deliverables `[x]`
+- [x] `src/shared/unified-model.ts` - Type definitions
+- [x] `src/adapters/adapter.ts` - Interface & registry
+- [x] `src/adapters/claude-code.ts` - Reference implementation
+- [x] `src/adapters/index.ts` - Barrel exports
 
-### Phase 2 Checkpoint `[ ]`
+### Phase 2 Checkpoint `[x]`
 ```bash
 npm run checkpoint:phase2
 # Validates: tsc --noEmit passes, npm test passes, Claude adapter produces identical output to v1
@@ -436,29 +436,32 @@ npm run checkpoint:phase2
 
 ## Phase 3: Additional Agent Adapters (Week 3-4)
 
-### 3.1 Priority 1: Cursor Adapter `[ ]`
-- [ ] Research input format
-- [ ] Implement `src/adapters/cursor.ts`
-- [ ] Implement `src/adapters/cursor.test.ts`
-- [ ] Create fixtures in `test/fixtures/cursor/`
+### 3.1 Priority 1: Cursor Adapter `[x]`
+- [x] Research input format
+- [x] Implement `src/adapters/cursor.ts`
+- [x] Implement `src/adapters/cursor.test.ts`
+- [x] Create fixtures in `test/fixtures/cursor/`
 
-### 3.2 Priority 1: Windsurf Adapter `[ ]`
+### 3.2 Priority 1: Windsurf Adapter `[!]`
 - [ ] Research input format
 - [ ] Implement `src/adapters/windsurf.ts`
 - [ ] Implement `src/adapters/windsurf.test.ts`
 - [ ] Create fixtures in `test/fixtures/windsurf/`
+- [!] No status line mechanism available
 
-### 3.3 Priority 2: Cline Adapter `[ ]`
+### 3.3 Priority 2: Cline Adapter `[!]`
 - [ ] Research input format
 - [ ] Implement `src/adapters/cline.ts`
 - [ ] Implement `src/adapters/cline.test.ts`
 - [ ] Create fixtures in `test/fixtures/cline/`
+- [!] No status line mechanism available
 
-### 3.4 Priority 2: Continue.dev Adapter `[ ]`
+### 3.4 Priority 2: Continue.dev Adapter `[!]`
 - [ ] Research input format
 - [ ] Implement `src/adapters/continue.ts`
 - [ ] Implement `src/adapters/continue.test.ts`
 - [ ] Create fixtures in `test/fixtures/continue/`
+- [!] No status line mechanism available
 
 ### 3.5 Per-Agent Checklist `[ ]`
 For each agent:
@@ -726,8 +729,8 @@ npm run checkpoint:phase{N}
 | Milestone | Target | Verification | Checkpoint Command | Status |
 |-----------|--------|--------------|-------------------|--------|
 | M1: Research complete | Week 1 end | `docs/agent-input-formats.md` with 5+ agents | `npm run checkpoint:phase1` | `[x]` |
-| M2: Unified model + Claude adapter | Week 2 end | All existing tests pass; new adapter works | `npm run checkpoint:phase2` | `[ ]` |
-| M3: Cursor adapter | Week 3 end | Cursor adapter with fixtures & tests | `npm run checkpoint:phase3` | `[ ]` |
+| M2: Unified model + Claude adapter | Week 2 end | All existing tests pass; new adapter works | `npm run checkpoint:phase2` | `[x]` |
+| M3: Cursor adapter | Week 3 end | Cursor adapter with fixtures & tests | `npm run checkpoint:phase3` | `[x]` |
 | M4: Test infrastructure | Week 5 end | `npm test` covers all adapters + integration | `npm run checkpoint:phase4` | `[ ]` |
 | M5: Generalized formatter | Week 6 end | Formatter works with any unified input | `npm run checkpoint:phase5` | `[ ]` |
 | M6: Config & CLI | Week 7 end | `statusline agent` commands work | `npm run checkpoint:phase6` | `[ ]` |
@@ -749,8 +752,8 @@ npm run checkpoint:phase{N}
 ## Success Criteria
 
 - [x] **Zero breaking changes** for existing Claude Code users
-- [~] **1 new agent (Cursor)** supported with real test data (Windsurf/Cline/Continue/Aider/Zed lack status line mechanisms)
-- [ ] **Single executable** works for all agents (auto-detects)
+- [x] **1 new agent (Cursor)** supported with real test data (Windsurf/Cline/Continue/Aider/Zed lack status line mechanisms)
+- [x] **Single executable** works for all agents (auto-detects)
 - [ ] **Test coverage** >90% for adapters, >80% for formatter
 - [ ] **Documentation** for adding new agents in <1 hour
 - [ ] **CI passes** on all supported Node versions (18, 20, 22)
