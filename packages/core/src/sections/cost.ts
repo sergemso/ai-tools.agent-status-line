@@ -47,9 +47,10 @@ export function createCostSection(ctx: RenderContext): Section {
   };
 }
 
-/** Format cost as $X.XX */
+/** Format cost as $X.XX (or $X.XXXX for sub-cent values). */
 function formatCost(cost: number): string {
-  if (cost >= 1) return `$${cost.toFixed(2)}`;
-  if (cost >= 0.01) return `$${cost.toFixed(2)}`;
-  return `$${cost.toFixed(4)}`;
+  // Sub-cent values get 4 decimals so they remain distinguishable
+  // (e.g. a per-call overhead of $0.0004 must not collapse to $0.00).
+  if (cost < 0.01) return `$${cost.toFixed(4)}`;
+  return `$${cost.toFixed(2)}`;
 }

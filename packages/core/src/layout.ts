@@ -10,36 +10,46 @@
 
 import type { Section, SectionItem, SectionLayout, RenderContext, Priority } from "./model.js";
 import { compositePriority } from "./priority.js";
+import { visibleWidth } from "./width.js";
 
 /** Default separator widths */
 const SECTION_SEPARATOR_WIDTH = 3; // " | "
 const ITEM_SEPARATOR_WIDTH = 1;    // " "
 
 /**
- * Estimate the rendered width of a section item.
- * Strips ANSI codes and accounts for content type.
+ * Resolve a SectionItem's content to a plain string.
+ *
+ * Shared between `estimateWidth` and the renderers so the width calc
+ * and the actual rendered output always agree on what's being measured.
  */
-export function estimateWidth(item: SectionItem, ctx: RenderContext): number {
-  let content = "";
-
-  if (typeof item.content === "string") {
-    content = item.content;
-  } else if (typeof item.content === "function") {
-    content = item.content(ctx);
-  } else if ("template" in item.content) {
+export function resolveItemContent(item: SectionItem, ctx: RenderContext): string {
+  if (typeof item.content === "string") return item.content;
+  if (typeof item.content === "function") return item.content(ctx);
+  if ("template" in item.content) {
     const { template, values, fallback } = item.content;
     try {
-      content = template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? fallback ?? ""));
+      return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? fallback ?? ""));
     } catch {
-      content = fallback ?? "";
+      return fallback ?? "";
     }
-  } else if ("parts" in item.content) {
-    content = item.content.parts.map((p) => p.text).join("");
   }
+  if ("parts" in item.content) {
+    return item.content.parts.map((p) => p.text).join("");
+  }
+  return "";
+}
 
-  // Strip ANSI escape codes
-  const stripped = content.replace(/\x1b\[[0-9;]*m/g, "");
-  return stripped.length;
+/**
+ * Estimate the rendered width of a section item.
+ *
+ * Uses the Unicode-aware `visibleWidth` so CJK and emoji count as
+ * width 2 and combining marks / ZWJ as width 0 — matching the legacy
+ * formatter's `visibleWidth` from `src/shared/terminal.ts`. Plain
+ * `string.length` would under-count wide glyphs and cause the layout
+ * engine to make wrong compaction decisions.
+ */
+export function estimateWidth(item: SectionItem, ctx: RenderContext): number {
+  return visibleWidth(resolveItemContent(item, ctx));
 }
 
 /**
@@ -278,41 +288,62 @@ export function buildLayout(
 }
 
 /**
- * Recalculate used width from kept items.
+ * Recalculate the *actual* display width used by the currently kept items.
+ *
+ * Important fixes vs. the previous implementation:
+ *
+ * 1. Item separators are now counted only between *kept* items within a
+ *    section. The old code used the index `j` in the full item list, so
+ *    if the first item of a section was dropped, the next kept item got a
+ *    phantom separator added (inflating the width by 1).
+ *
+ * 2. The result is no longer clamped to `availableWidth`. The caller
+ *    (`buildLayout`) compares `usedWidth + itemWidth <= availableWidth` to
+ *    decide whether to keep or evict an item; clamping hid overflow from
+ *    that comparison and could cause critical items to be wrongly evicted
+ *    or wrongly kept.
  */
 function recalcUsedWidth(
   keptItems: Set<string>,
   allItems: Array<{ sectionId: string; item: SectionItem & { estimatedWidth: number } }>,
-  availableWidth: number
+  _availableWidth: number
 ): number {
   let width = 0;
   const sectionCounts = new Map<string, number>();
-  
+
   // Process in original section order (not priority order)
   const sectionOrder = [...new Set(allItems.map((e) => e.sectionId))];
-  
+
   for (let i = 0; i < sectionOrder.length; i++) {
     const sectionId = sectionOrder[i];
     const sectionItems = allItems.filter((e) => e.sectionId === sectionId);
-    
-    for (let j = 0; j < sectionItems.length; j++) {
-      const itemKey = `${sectionId}:${sectionItems[j].item.id}`;
-      if (keptItems.has(itemKey)) {
-        width += sectionItems[j].item.estimatedWidth;
-        if (j > 0) width += ITEM_SEPARATOR_WIDTH;
-        sectionCounts.set(sectionId, (sectionCounts.get(sectionId) ?? 0) + 1);
-      }
+    let keptInSection = 0;
+
+    for (const entry of sectionItems) {
+      const itemKey = `${sectionId}:${entry.item.id}`;
+      if (!keptItems.has(itemKey)) continue;
+
+      // Add an item separator only between consecutive kept items in
+      // the *same* section (i.e. when this is not the first kept item).
+      if (keptInSection > 0) width += ITEM_SEPARATOR_WIDTH;
+
+      width += entry.item.estimatedWidth;
+      keptInSection += 1;
     }
-    
-    // Add section separator for subsequent sections that have items
-    if (i > 0 && sectionCounts.get(sectionId) && sectionCounts.get(sectionId)! > 0) {
-      // Check if any previous section has items
-      const prevHasItems = sectionOrder.slice(0, i).some((s) => (sectionCounts.get(s) ?? 0) > 0);
+
+    sectionCounts.set(sectionId, keptInSection);
+
+    // Add a section separator when this section contributed items and at
+    // least one earlier section also contributed items.
+    if (keptInSection > 0 && i > 0) {
+      const prevHasItems = sectionOrder
+        .slice(0, i)
+        .some((s) => (sectionCounts.get(s) ?? 0) > 0);
       if (prevHasItems) {
         width += SECTION_SEPARATOR_WIDTH;
       }
     }
   }
-  
-  return Math.min(width, availableWidth);
+
+  return width;
 }

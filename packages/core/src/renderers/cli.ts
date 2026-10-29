@@ -8,6 +8,8 @@
 import type { Section, SectionItem, SectionLayout, RenderContext } from "../model.js";
 import type { Renderer } from "../renderer.js";
 import { style } from "../colors.js";
+import { resolveItemContent } from "../layout.js";
+import { visibleWidth } from "../width.js";
 
 /** CLI Renderer - outputs ANSI-colored string */
 export class CliRenderer implements Renderer<string, string> {
@@ -19,12 +21,16 @@ export class CliRenderer implements Renderer<string, string> {
   }
   
   measureItem(item: SectionItem, ctx: RenderContext): number {
-    const content = this.resolveContent(item, ctx);
-    return content.replace(/\x1b\[[0-9;]*m/g, "").length;
+    // Use the shared Unicode-aware visibleWidth (CJK / emoji count as 2,
+    // combining marks / ZWJ as 0) instead of `string.length`, which
+    // under-counts wide glyphs and disagrees with `estimateWidth` in
+    // `layout.ts`. Both code paths now share `resolveItemContent` and
+    // `visibleWidth` so they can never diverge.
+    return visibleWidth(resolveItemContent(item, ctx));
   }
   
   renderItem(item: SectionItem, ctx: RenderContext): string {
-    return this.resolveContent(item, ctx);
+    return resolveItemContent(item, ctx);
   }
   
   join(items: string[], separator: string): string {
@@ -61,30 +67,6 @@ export class CliRenderer implements Renderer<string, string> {
     }).filter((s): s is string => s !== null);
     
     return this.join(renderedSections, sectionSeparator);
-  }
-  
-  /**
-   * Resolve item content to string.
-   */
-  private resolveContent(item: SectionItem, ctx: RenderContext): string {
-    if (typeof item.content === "string") {
-      return item.content;
-    }
-    if (typeof item.content === "function") {
-      return item.content(ctx);
-    }
-    if ("template" in item.content) {
-      const { template, values, fallback } = item.content;
-      try {
-        return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? fallback ?? ""));
-      } catch {
-        return fallback ?? "";
-      }
-    }
-    if ("parts" in item.content) {
-      return item.content.parts.map((p) => p.text).join("");
-    }
-    return "";
   }
 }
 

@@ -7,6 +7,11 @@ import { formatStatusLine as legacyFormatStatusLine } from "./formatter.legacy.j
 import type { FormatterOptions } from "./formatter.legacy.js";
 import type { UnifiedStatusInput } from "./adapters/index.js";
 import { loadPrices, matchModelPrice } from "./shared/prices.js";
+import {
+  DEFAULT_BASE_MODEL,
+  DEFAULT_FRESH_TOKENS,
+  DEFAULT_SUMMARY_TOKENS,
+} from "./shared/constants.js";
 
 import {
   buildLayout,
@@ -16,21 +21,30 @@ import {
   PriorityLevel as P,
 } from "@statusline/core";
 import { cliRenderer } from "@statusline/core";
-import { DEFAULT_SECTIONS } from "@statusline/core";
 
 /**
  * Convert unified input to the format expected by core sections.
  * This adapts the existing UnifiedStatusInput to the section item generators.
  */
-function adaptInputForCore(unified: UnifiedStatusInput, prices: any): any {
+function adaptInputForCore(
+  unified: UnifiedStatusInput,
+  prices: any,
+  options: FormatterOptions
+): any {
   const { model, context, usage, cost, cache, rateLimits, extensions } = unified;
-  
-  // Calculate overhead (ported from legacy formatter)
-  const overhead = calculateOverhead(unified, prices);
-  
-  // Calculate cost multiplier
-  const costMultiplier = matchModelPrice(prices, model.displayName, "Claude Sonnet 5.5", extensions.fastMode === true);
-  
+
+  // Calculate overhead (ported from legacy formatter). Pass the
+  // user-configured freshTokens / summaryTokens / baseModel so the
+  // new pipeline matches the legacy behavior instead of using hardcoded
+  // defaults that ignore the user's STATUSLINE_FRESH_TOKENS /
+  // STATUSLINE_SUMMARY_TOKENS / STATUSLINE_BASE_MODEL settings.
+  const overhead = calculateOverhead(unified, prices, options);
+
+  // Calculate cost multiplier — use the user-configured baseModel,
+  // not a hardcoded "Claude Sonnet 5.5".
+  const baseModel = options.baseModel ?? DEFAULT_BASE_MODEL;
+  const costMultiplier = matchModelPrice(prices, model.displayName, baseModel, extensions.fastMode === true);
+
   return {
     model: {
       name: model.displayName,
@@ -73,21 +87,28 @@ function adaptInputForCore(unified: UnifiedStatusInput, prices: any): any {
   };
 }
 
-/** Calculate overhead - ported from legacy formatter */
-function calculateOverhead(unified: UnifiedStatusInput, prices: any): any {
+/** Calculate overhead - ported from legacy formatter.
+ *  Honors user-configured freshTokens / summaryTokens via FormatterOptions
+ *  (previously hardcoded to 25000 / 8000). */
+function calculateOverhead(
+  unified: UnifiedStatusInput,
+  prices: any,
+  options: FormatterOptions
+): any {
   const { cache, model, extensions } = unified;
   const ctoks = cache.recacheTokensIfCold;
-  const freshTokens = 25000; // DEFAULT_FRESH_TOKENS
-  
+  const freshTokens = options.freshTokens ?? DEFAULT_FRESH_TOKENS;
+  const summaryTokens = options.summaryTokens ?? DEFAULT_SUMMARY_TOKENS;
+
   if (ctoks == null || cache.ttlSeconds == null || ctoks <= freshTokens) {
     return { show: false };
   }
 
-  const modelPrices = prices.models[model.displayName] || 
-    prices.models[`Claude ${model.displayName}`] || 
-    prices.models[model.displayName.toLowerCase()] || 
+  const modelPrices = prices.models[model.displayName] ||
+    prices.models[`Claude ${model.displayName}`] ||
+    prices.models[model.displayName.toLowerCase()] ||
     prices.models[`claude ${model.displayName.toLowerCase()}`];
-    
+
   if (!modelPrices) {
     return { show: false };
   }
@@ -100,7 +121,6 @@ function calculateOverhead(unified: UnifiedStatusInput, prices: any): any {
   const oCall = (d * 0.1 * pin) / 1e6;
   const oCold = (d * wmul * pin) / 1e6;
   const oBe = freshTokens * wmul / (d * 0.1);
-  const summaryTokens = 8000; // DEFAULT_SUMMARY_TOKENS
   const oCompact = (ctoks * 0.1 * pin + summaryTokens * pout + (freshTokens + summaryTokens) * wmul * pin) / 1e6;
 
   return {
@@ -122,12 +142,13 @@ function buildUserConfig(options: FormatterOptions): UserConfig {
     items: {},
     priorityThreshold: P.NONE,
   };
-  
-  // Parse sections string to enable/disable
+
+  // Parse sections string to enable/disable.
   // Legacy default sections: model,context,cost,overhead,cache,resets
   if (options.sections) {
     const enabledSections = new Set(options.sections.split(",").map((s) => s.trim()));
-    // Map legacy section names to new section IDs
+    // Map legacy section names to new section IDs. Several legacy names
+    // (e.g. "cache" and "stats") may map to the same new section id.
     const sectionMap: Record<string, string> = {
       "model": "model",
       "context": "context",
@@ -141,17 +162,27 @@ function buildUserConfig(options: FormatterOptions): UserConfig {
       "worktree": "worktree",
       "cursor-extensions": "cursor-extensions",
     };
-    
+
     config.sections = config.sections || {};
     for (const [legacyName, newId] of Object.entries(sectionMap)) {
       const isEnabled = enabledSections.has(legacyName);
-      // Don't disable if already enabled (e.g., cache and stats both map to cache)
-      if (isEnabled || !(newId in config.sections)) {
+      const existing = config.sections[newId];
+      // OR semantics: if any alias of a section id is enabled in the
+      // user's sections list, the section is enabled. If none of its
+      // aliases is enabled, the section is disabled. (Previously,
+      // iterating in sectionMap order meant a later alias like "stats"
+      // could silently overwrite an earlier "cache: false" with
+      // "cache: true", defeating the user's intent.)
+      if (existing === undefined) {
         config.sections[newId] = { enabled: isEnabled };
+      } else if (isEnabled) {
+        config.sections[newId] = { ...existing, enabled: true };
       }
+      // If !isEnabled and existing already set: leave existing as-is
+      // (it might have been enabled by an earlier alias).
     }
   }
-  
+
   // Apply resets filter for rate-limits section
   if (options.resets) {
     const enabledResets = new Set(options.resets.split(",").map((s) => s.trim()));
@@ -159,7 +190,7 @@ function buildUserConfig(options: FormatterOptions): UserConfig {
     config.sections["rate-limits"] = config.sections["rate-limits"] || { enabled: true };
     config.sections["rate-limits"].resets = Array.from(enabledResets);
   }
-  
+
   // Apply thresholds from options to config for use in sections
   if (options.contextWarn !== undefined) config.contextWarn = options.contextWarn;
   if (options.contextCrit !== undefined) config.contextCrit = options.contextCrit;
@@ -169,7 +200,7 @@ function buildUserConfig(options: FormatterOptions): UserConfig {
   if (options.resetCrit !== undefined) config.resetCrit = options.resetCrit;
   if (options.overheadWarn !== undefined) config.overheadWarn = options.overheadWarn;
   if (options.overheadCrit !== undefined) config.overheadCrit = options.overheadCrit;
-  
+
   return config;
 }
 
@@ -186,23 +217,25 @@ export async function formatStatusLine(
     margin = 3,
     pricesTtl = 3600,
     claudeConfigDir,
+    dumpPath,
   } = options;
-  
+
   // Handle width = 0 (auto-detect) by using default but marking as unconstrained
   const isWidthConstrained = width > 0;
   const effectiveWidth = width > 0 ? width : 120;
   const effectiveMargin = margin > 0 ? margin : 3;
-  
+
   try {
     // Load prices for overhead calculation
     const prices = await loadPrices(claudeConfigDir || "", pricesTtl);
-    
-    // 1. Adapt input for core sections
-    const adaptedInput = adaptInputForCore(unified, prices);
-    
+
+    // 1. Adapt input for core sections (pass options so baseModel /
+    //    freshTokens / summaryTokens are honored)
+    const adaptedInput = adaptInputForCore(unified, prices, options);
+
     // 2. Build user config
     const userConfig = buildUserConfig(options);
-    
+
     // 3. Create render context
     const ctx: RenderContext = {
       input: adaptedInput,
@@ -212,16 +245,30 @@ export async function formatStatusLine(
       // Pass whether width is constrained (for layout engine)
       widthConstrained: isWidthConstrained,
     };
-    
+
     // 4. Get sections with config applied
     const sections = getSections(userConfig, ctx);
-    
+
     // 5. Build layout
     const layout = buildLayout(sections, ctx);
-    
+
     // 6. Render with CLI renderer
     const output = cliRenderer.render(layout, ctx);
-    
+
+    // Dump width diagnostics (matches legacy formatter behavior).
+    // Previously the new pipeline silently dropped this debug hook.
+    if (dumpPath) {
+      try {
+        const { promises: fs } = await import("fs");
+        await fs.appendFile(
+          dumpPath,
+          `\ncols=${effectiveWidth} margin=${effectiveMargin} overflow=${layout.meta.overflow} dropped=${layout.meta.droppedItems.length} visible=${output.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "").length}`
+        );
+      } catch {
+        // Ignore — diagnostics are best-effort.
+      }
+    }
+
     return output;
   } catch (error) {
     // Fallback to legacy formatter on error
