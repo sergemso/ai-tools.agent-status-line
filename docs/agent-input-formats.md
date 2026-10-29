@@ -1,19 +1,22 @@
 # Agent Input Format Specification
 
 ## Overview
-This document specifies the JSON input formats for status line plugins across different coding agents. Only agents with a **status line plugin mechanism** (receiving JSON on stdin, writing formatted output to stdout) are included.
+This document specifies the JSON input formats for status line plugins across different coding agents.
 
-## Supported Agents
+**Our adapter architecture supports agents with an external command mechanism:**
+- Agent spawns a command periodically
+- JSON payload sent on stdin
+- ANSI string returned on stdout
+- Refresh interval configurable (typically 100ms–30s)
+
+Only **Claude Code** and **Cursor** have this exact mechanism. Other agents use different approaches documented below.
+
+## Supported Agents (Compatible with Our Adapter)
 
 | Agent | Status Line Mechanism | Config Location | Similarity to Claude Code |
 |-------|----------------------|-----------------|---------------------------|
-| **Claude Code** | ✅ Full support | `~/.claude/settings.json` | Reference (100%) |
-| **Cursor** | ✅ Full support | `~/.cursor/cli-config.json` | Very high (~95%) |
-| Windsurf | ❌ No mechanism | N/A | N/A |
-| Cline | ❌ No mechanism | N/A | N/A |
-| Continue.dev | ❌ No mechanism | N/A | N/A |
-| Aider | ❌ No mechanism | N/A | N/A |
-| Zed | ❌ No mechanism | N/A | N/A |
+| **Claude Code** | ✅ `statusLine.command` (JSON stdin → ANSI stdout) | `~/.claude/settings.json` | Reference (100%) |
+| **Cursor** | ✅ `statusLine.command` (JSON stdin → ANSI stdout) | `~/.cursor/cli-config.json` | Very high (~95%) |
 
 ---
 
@@ -234,48 +237,65 @@ interface CursorStatusInput {
 
 ---
 
-## Unsupported Agents (No Status Line Mechanism)
+## Agents with Different Mechanisms (Not Compatible with Our Adapter)
 
 ### Windsurf (Codeium)
-- **Type**: Autocomplete/inline completion tool
+- **Type**: Autocomplete/inline completion tool (Neovim/VS Code extensions)
 - **Interface**: Local language server (HTTP/JSON-RPC) on random port
 - **Auth**: API key required (`sk-ws-...`)
-- **Data Available**: Credit usage via `GetUserStatus` RPC, completion state via `status_string()`
-- **Status Line**: No plugin mechanism; status shown via Neovim/VS Code extensions (lualine, etc.)
+- **Status Data**: Completion state via `status_string()` → returns `'3/8'`, `'0'`, or `'*'`
+- **Mechanism**: Editor-integrated only (lualine, lightline, VS Code status bar)
+- **Data Available**: Credit usage via `GetUserStatus` RPC
+- **Why Not Compatible**: No external command hook; status shown via editor's own status line API
 
 ### Cline
 - **Type**: VS Code extension (AI coding agent)
-- **Interface**: VS Code Extension API (`ClineAPI`) for other extensions
-- **Data Available**: Task state, token usage, cost, context window via extension messages
-- **Status Line**: No plugin mechanism; UI is within VS Code panel
+- **Interface**: VS Code Extension API (`ClineAPI`), gRPC-over-postMessage
+- **State**: `ExtensionState` with `turnState`, `apiConfiguration`, `taskHistory`, token usage, cost
+- **Mechanism**: WebView UI (React) + internal status bar in VS Code panel
+- **Feature Request**: #2622 (expose local API/CLI for remote control)
+- **Why Not Compatible**: No stdin/stdout mechanism; state is internal to VS Code extension host
 
 ### Continue.dev
-- **Type**: IDE extension (VS Code, JetBrains) + CLI
-- **Interface**: JSON-RPC protocol (`core/protocol/core.ts`), REST API for Hub
-- **Data Available**: Free trial status, chat/autocomplete limits, model config
-- **Status Line**: No plugin mechanism; UI integrated in IDE
+- **Type**: IDE extension (VS Code, JetBrains) + CLI (`cn`)
+- **Config**: `~/.continue/config.yaml`
+- **VS Code**: Uses `vscode.StatusBarItem` (internal `setupStatusBar()` function)
+- **CLI**: No status line mechanism; TUI has no footer/status bar
+- **Data Available**: Model config, autocomplete status, context providers
+- **Why Not Compatible**: VS Code extension uses internal status bar API; CLI has no status line hook
 
 ### Aider
 - **Type**: CLI coding agent
 - **Interface**: `--message-format stream-json` outputs JSONL events
-- **Data Available**: Token usage, cost, model info via JSONL events
-- **Status Line**: No plugin mechanism; runs in terminal
+- **Event Stream**: `init` → `message`* → `tool_use`* → `tool_result`* → `result`
+- **Event Types**: `init` (session_id, model), `message` (role, content, delta), `tool_use`, `tool_result`, `result` (stats with tokens, cost)
+- **Mechanism**: Streaming JSONL during execution, not periodic status snapshots
+- **Why Not Compatible**: Different paradigm—streaming event log vs. periodic status snapshot. Would need a state-accumulating adapter that processes the stream.
 
 ### Zed
 - **Type**: Code editor with extensions
 - **Extensions**: Provide languages, themes, debuggers, snippets, MCP servers
-- **Status Bar**: Built-in only; extensions cannot add status bar items
-- **Status Line**: No plugin mechanism; feature request open
+- **Status Bar**: Built-in only; extension API has no status bar items (RFC #53403, issue #28682)
+- **Current Extension Trait**: Only language servers, debuggers, completions, slash commands
+- **Why Not Compatible**: No status bar API in extension system yet (RFC in draft)
+
+### OpenCode
+- **Type**: CLI/TUI agent
+- **Mechanism**: TUI plugins (in-process TypeScript/JSX rendering to slots)
+- **Config**: `cli.json` / `tui.json` with `plugins: ["pkg"]`
+- **Slots**: `prompt.footer.status`, `session_prompt_right`, `home.footer.status`, `sidebar.content`
+- **Template System**: Native templates in `tui.status_line.templates` with variables like `{model_id}`, `{total_tokens}`, `{context_used_pct}`
+- **Why Not Compatible**: In-process plugin architecture (loads `.tsx`), not external command. No stdin/stdout contract.
 
 ---
 
 ## Implementation Priority
 
-Given the above analysis, the implementation priority should be:
+Given the above analysis:
 
-1. **Phase 1-2**: Claude Code (reference) + Cursor adapter
-2. **Phase 3**: No additional agents with status line mechanisms exist
-3. **Future**: If any agent adds a status line mechanism, add adapter
+1. **Phase 1-2**: ✅ Complete — Claude Code (reference) + Cursor adapter
+2. **Phase 3**: No additional agents with compatible status line mechanisms exist
+3. **Future**: If any agent adds an external command + JSON stdin/stdout mechanism, add adapter
 
 ---
 
