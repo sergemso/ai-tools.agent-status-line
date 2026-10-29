@@ -49,12 +49,20 @@ function isMyAgentInput(input: AgentInput): input is MyAgentInput {
 export class MyAgentAdapter implements StatusLineAdapter {
   readonly agentType: AgentType = "my-agent"; // Must match AgentType in unified-model.ts
   
-  // Detection: unique fields that identify this agent
+  // Detection: unique fields that identify this agent. Do not rely on fields the agent may omit
+  // (Claude Code does not always send hook_event_name or rate_limits), and make sure another
+  // agent's input cannot match (the registry takes the first adapter whose canHandle is true).
   readonly canHandle = createCanHandle({
     unique_field: (v) => typeof v === "string",
     session_id: (v) => typeof v === "string",
   });
   
+  // Optional, for `statusline config wizard`: a representative input, a way to measure the
+  // fresh-session baseline from the agent's own history, and an install check.
+  sampleInput?(): AgentInput { /* ... */ }
+  async measureBaseline?(configDir: string): Promise<{ tokens: number; samples: number } | null> { /* ... */ }
+  isInstalled?(): boolean { /* ... */ }
+
   parse(input: AgentInput): UnifiedStatusInput {
     if (!isMyAgentInput(input)) {
       throw new Error("Invalid <Agent> input format");

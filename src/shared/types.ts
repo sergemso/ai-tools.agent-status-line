@@ -71,6 +71,9 @@ export interface ConfigSettings {
   RESET_CRIT?: string;
   WIDTH?: string;
   MARGIN?: string;
+  FORMAT?: string;
+  EMOJI_WIDTH?: string;
+  FORMATS?: string;
   DUMP?: string;
   FRESH_TOKENS?: string;
   SUMMARY_TOKENS?: string;

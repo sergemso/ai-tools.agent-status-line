@@ -189,7 +189,7 @@ describe("renderStatusLine", () => {
       cost: { session: 1.58, total: 1.58 },
     });
     const ansi = renderStatusLine(input, { width: 120 });
-    expect(ansi).toContain("$1.58");
+    expect(ansi).toContain("$1.6");
   });
 
   it("emits ANSI colour escape sequences", () => {
@@ -212,14 +212,14 @@ describe("renderStatusLine", () => {
   it("shows all sections when width is unconstrained", () => {
     const ansi = renderStatusLine(makeInput(), { widthConstrained: false, width: 0 });
     expect(ansi).toContain("Claude Sonnet 4");
-    expect(ansi).toContain("$0.42");
+    expect(ansi).toContain("42¢");
   });
 
   it("uses default opencode sections (model, context, cost, tokens) when none specified", () => {
     const ansi = renderStatusLine(makeInput(), { sections: null });
     // Model and cost should be present; rate-limits should NOT (opencode has no data).
     expect(ansi).toContain("Claude Sonnet 4");
-    expect(ansi).toContain("$0.42");
+    expect(ansi).toContain("42¢");
     expect(ansi).not.toContain("5h");
     expect(ansi).not.toContain("7d");
   });
@@ -296,7 +296,7 @@ describe("ansiToSpans", () => {
     // Plain text should still contain the model name and cost.
     const plain = spansToPlainText(spans);
     expect(plain).toContain("Claude Sonnet 4");
-    expect(plain).toContain("$0.42");
+    expect(plain).toContain("42¢");
   });
 });
 

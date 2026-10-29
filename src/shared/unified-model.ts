@@ -41,6 +41,8 @@ export interface UnifiedCache {
   hitRatio?: number;
   expiresAt?: number;
   recacheTokensIfCold?: number;
+  /** API requests made so far in the session (for per-call context growth) */
+  requests?: number;
 }
 
 export interface RateLimitWindow {

@@ -133,7 +133,7 @@ export function getSections(config: UserConfig, ctx: RenderContext): Section[] {
     result.push(section);
   }
 
-  return result;
+  return regroup(result);
 }
 
 /**
@@ -142,4 +142,34 @@ export function getSections(config: UserConfig, ctx: RenderContext): Section[] {
  */
 export function getSectionDefinitions(): Section[] {
   return DEFAULT_SECTIONS.map((s) => ({ ...s }));
+}
+
+/**
+ * Merge sections into fewer groups (fewer separators) with equal section
+ * priority, so item priority alone decides what drops first.
+ * Each item is placed by "section.item" key; display order is the list order.
+ */
+const GROUPS: Array<{ id: string; name: string; items: string[] }> = [
+  { id: "identity", name: "Identity", items: ["model.name", "model.effort", "model.costMultiplier"] },
+  { id: "context", name: "Context", items: ["context.bar"] },
+  { id: "efficiency", name: "Session efficiency", items: ["cost.session", "overhead.costPerCall", "overhead.compactCost", "overhead.breakEven"] },
+  { id: "cache", name: "Cache", items: ["cache.timer", "cache.cold", "overhead.cold"] },
+];
+
+function regroup(sections: Section[]): Section[] {
+  const all = new Map<string, SectionItem>();
+  const claimed = new Set<string>();
+  for (const s of sections) for (const i of s.items) all.set(`${s.id}.${i.id}`, { ...i, id: `${s.id}.${i.id}` });
+  const out: Section[] = [];
+  for (const g of GROUPS) {
+    const items = g.items.filter((k) => all.has(k)).map((k) => (claimed.add(k), all.get(k)!));
+    if (items.length === 0) continue;
+    out.push({ id: g.id, name: g.name, priority: PriorityLevel.MEDIUM, minItems: 0, items } as Section);
+  }
+  // Items from sections not listed above (e.g. rate-limits) keep their own sections
+  const rest = sections
+    .map((s) => ({ ...s, priority: PriorityLevel.MEDIUM, items: s.items.map((i) => ({ ...i, id: `${s.id}.${i.id}` })).filter((i) => !claimed.has(i.id)) }))
+    .filter((s) => s.items.length > 0)
+    .map((s) => ({ ...s, items: s.items.map((i) => ({ ...i, id: i.id.slice(s.id.length + 1) })) }));
+  return [...out, ...rest];
 }

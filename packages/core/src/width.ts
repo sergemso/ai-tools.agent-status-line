@@ -27,6 +27,12 @@ const BLOCK_CHARS = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "�
  * pictographs). Zero-width joiners and combining marks are handled
  * separately (they contribute 0 columns).
  */
+/** Some terminals draw U+26A1 / U+1F195 one cell wide; the wizard measures it. Default: two cells. */
+let emojiWide = true;
+export function setEmojiWidth(n: number): void {
+  emojiWide = n !== 1;
+}
+
 function isWide(codePoint: number): boolean {
   return (
     // Hangul Jamo (compatibility) and CJK Radicals
@@ -46,6 +52,8 @@ function isWide(codePoint: number): boolean {
     // Misc CJK / Kanbun
     (codePoint >= 0x20000 && codePoint <= 0x2fffd) ||
     (codePoint >= 0x30000 && codePoint <= 0x3fffd) ||
+    // Emoji with default emoji presentation (U+26A1 high voltage)
+    (emojiWide && (codePoint === 0x26a1 || codePoint === 0x1f195)) ||
     // Emoji blocks
     (codePoint >= 0x1f300 && codePoint <= 0x1f64f) ||
     (codePoint >= 0x1f680 && codePoint <= 0x1f6ff) ||

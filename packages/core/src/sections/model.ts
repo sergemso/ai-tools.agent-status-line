@@ -3,7 +3,7 @@
  * Priority: CRITICAL (100)
  */
 
-import type { Section, SectionItem, RenderContext } from "../model.js";
+import type { Section, SectionItem, RenderContext, Priority } from "../model.js";
 import { PriorityLevel as P } from "../priority.js";
 
 /** Model section ID */
@@ -22,19 +22,31 @@ function createModelItems(input: any): SectionItem[] {
     items.push({
       id: "name",
       content: (ctx: RenderContext) => renderModelName(ctx.input.model),
-      priority: P.CRITICAL,
+      priority: 10 as Priority,
       minWidth: 3,
       idealWidth: 30,
       hints: { truncatable: true, truncateSuffix: "…" },
     });
   }
 
-  // Cost multiplier - LOW
+  // Effort level - rank 7
+  if (model.name && model.effort) {
+    items.push({
+      id: "effort",
+      content: (ctx: RenderContext) => renderEffort(ctx.input.model),
+      priority: 20 as Priority,
+      minWidth: 2,
+      idealWidth: 4,
+      hints: { truncatable: false },
+    });
+  }
+
+  // Cost multiplier - rank 5
   if (model.costMultiplier !== undefined && model.costMultiplier !== 1 && model.costMultiplier !== null) {
     items.push({
       id: "costMultiplier",
-      content: (ctx: RenderContext) => `\x1b[36m${model.name}\x1b[0m \x1b[2mx${model.costMultiplier.toFixed(1).replace(/\.0$/, "")}\x1b[0m`,
-      priority: P.LOW,
+      content: (ctx: RenderContext) => `\x1b[2mx${model.costMultiplier.toFixed(1).replace(/\.0$/, "")}\x1b[0m`,
+      priority: 40 as Priority,
       minWidth: 6,
       idealWidth: 12,
       hints: { truncatable: false },
@@ -58,6 +70,10 @@ function createModelItems(input: any): SectionItem[] {
 
 /** Render model name with effort level - matches legacy formatter */
 function renderModelName(model: any): string {
+  return `\x1b[36m${model.name}\x1b[0m`;
+}
+
+function renderEffort(model: any): string {
   const RESET = "\x1b[0m";
   const CYAN = "\x1b[36m";
   const DIM = "\x1b[2m";
@@ -65,7 +81,6 @@ function renderModelName(model: any): string {
   const YELLOW = "\x1b[33m";
   const RED = "\x1b[31m";
 
-  let modelDisplay = `${CYAN}${model.name}${RESET}`;
   const effortLevel = model.effort;
   
   let effortDisplay = "";
@@ -89,7 +104,7 @@ function renderModelName(model: any): string {
       if (effortLevel) effortDisplay = `${DIM}${effortLevel}${RESET}`;
   }
 
-  return `${modelDisplay}${effortDisplay ? ` ${effortDisplay}` : ""}`;
+  return effortDisplay;
 }
 
 /** Model section definition */
@@ -114,19 +129,31 @@ export function createModelSection(ctx: RenderContext): Section {
     items.push({
       id: "name",
       content: (ctx: RenderContext) => renderModelName(ctx.input.model),
-      priority: P.CRITICAL,
+      priority: 10 as Priority,
       minWidth: 3,
       idealWidth: 30,
       hints: { truncatable: true, truncateSuffix: "…" },
     });
   }
 
-  // Cost multiplier - LOW
+  // Effort level - rank 7
+  if (model.name && model.effort) {
+    items.push({
+      id: "effort",
+      content: (ctx: RenderContext) => renderEffort(ctx.input.model),
+      priority: 20 as Priority,
+      minWidth: 2,
+      idealWidth: 4,
+      hints: { truncatable: false },
+    });
+  }
+
+  // Cost multiplier - rank 5
   if (model.costMultiplier !== undefined && model.costMultiplier !== 1 && model.costMultiplier !== null) {
     items.push({
       id: "costMultiplier",
-      content: (ctx: RenderContext) => `\x1b[36m${model.name}\x1b[0m \x1b[2mx${model.costMultiplier.toFixed(1).replace(/\.0$/, "")}\x1b[0m`,
-      priority: P.LOW,
+      content: (ctx: RenderContext) => `\x1b[2mx${model.costMultiplier.toFixed(1).replace(/\.0$/, "")}\x1b[0m`,
+      priority: 40 as Priority,
       minWidth: 6,
       idealWidth: 12,
       hints: { truncatable: false },

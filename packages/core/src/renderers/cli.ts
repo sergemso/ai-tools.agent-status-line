@@ -38,8 +38,8 @@ export class CliRenderer implements Renderer<string, string> {
   }
   
   protected getItemSeparator(ctx: RenderContext): string {
-    // Dim pipe separator with spaces (matches legacy)
-    return style.dim(" | ");
+    // Plain space inside a group (layout budgets 1 column; pipes are for group boundaries)
+    return " ";
   }
   
   protected getSectionSeparator(ctx: RenderContext): string {

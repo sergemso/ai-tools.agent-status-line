@@ -27,13 +27,13 @@ The status-line plugin now supports multiple coding agents through a unified ada
 1. **Auto-detection**: The adapter registry automatically detects the agent from the input JSON structure
 2. **Parsing**: Each adapter converts agent-specific JSON to a unified internal model
 3. **Formatting**: The generalized formatter generates the status line using the unified model
-4. **Compaction**: The output is progressively compacted to fit the terminal width
+4. **Fitting**: Items are grouped (model, context, session efficiency, cache, extras) and dropped one at a time in strict priority order until the line fits the terminal width
 
 ## Supported Agents
 
 ### Claude Code
 - **Config**: `~/.claude/settings.json`
-- **Input**: `hook_event_name: "Status"` with full context, cost, cache, rate limits
+- **Input**: `session_id`, `transcript_path`, `context_window`, cost, `prompt_cache` and (subscription accounts only) `rate_limits`; `hook_event_name` is not guaranteed
 - **Features**: All sections supported (model, context, tokens, cost, overhead, cache, stats, resets)
 
 ### Cursor

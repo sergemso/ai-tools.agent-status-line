@@ -25,6 +25,8 @@ import { loadConfig, putSetting, putSettings, dropSettings, resetAllSettings, ge
 import { loadPrices, getPricesPath } from "shared/prices.js";
 import { getClaudeConfigDir } from "utils/config-utils.js";
 import { ConfigSettings } from "shared/types.js";
+import { runWizard } from "./wizard.js";
+import { parseFormats } from "@statusline/core";
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -54,6 +56,9 @@ function usage(): void {
   overhead [FRESH [SUMMARY]]    token sizes for the overhead metric: a fresh session (25000), a compaction summary (8000)
   width [N|auto]                terminal columns to fit the line into (auto = detect from the tty)
   margin N                      columns kept free at the right edge (default 2)
+  wizard [--yes] [--preset NAME] [--format STYLE] [--fresh N]  guided setup: measures your baseline, previews text styles (non-interactive with --yes)
+  format [auto|words|short|glyph|ascii]  text style: auto (default: most readable that fits the width), words ("next call 3.6¢"), short ("next 3.6¢"), glyph ("⚡3.6¢") or plain ASCII ("nx 3.6c")
+  format ITEM words|short|glyph|ascii|default  per-item or per-section override at any width, e.g. format overhead glyph, format cost.session words
   dump [PATH|off]               write the raw status-line JSON + detected width/level to PATH on each run
   reset [KEY...]                drop saved settings (all if none given)
       KEY: BASE_MODEL SECTIONS RESETS CONTEXT_WARN CONTEXT_CRIT CACHE_WARN CACHE_CRIT RESET_WARN RESET_CRIT WIDTH MARGIN DUMP FRESH_TOKENS SUMMARY_TOKENS OVERHEAD_WARN OVERHEAD_CRIT`);
@@ -338,6 +343,37 @@ async function cmdMargin(claudeConfigDir: string, args: string[]): Promise<void>
   console.log(`margin: ${args[0]}`);
 }
 
+async function cmdFormat(claudeConfigDir: string, args: string[]): Promise<void> {
+  const config = await loadConfig(claudeConfigDir);
+  const styles = ["words", "short", "glyph", "ascii"];
+
+  if (args.length === 0) {
+    console.log(`format: ${config.FORMAT || "auto (default)"}`);
+    console.log(`overrides: ${config.FORMATS || "none"}`);
+    console.log("keys: cost.session  overhead.costPerCall  overhead.compactCost  overhead.breakEven  cache.timer  cache.cold  (or a whole section: cost, overhead, cache)");
+    return;
+  }
+
+  if (args.length === 1) {
+    if (args[0] !== "auto" && !styles.includes(args[0])) die("format: auto, words, short, glyph or ascii");
+    if (args[0] === "auto") await dropSettings(claudeConfigDir, ["FORMAT"]);
+    else await putSetting(claudeConfigDir, "FORMAT", args[0]);
+    console.log(`format: ${args[0]}`);
+    return;
+  }
+
+  const [key, style] = args;
+  if (!/^[a-z-]+(\.[A-Za-z]+)?$/.test(key)) die("format: ITEM like cost.session or a section like overhead");
+  if (!styles.includes(style) && style !== "default") die("format: words, short, glyph, ascii or default");
+  const map = parseFormats(config.FORMATS);
+  if (style === "default") delete map[key];
+  else map[key] = style as "words" | "short" | "glyph" | "ascii";
+  const out = Object.entries(map).map(([k, v]) => `${k}=${v}`).join(",");
+  if (out) await putSetting(claudeConfigDir, "FORMATS", out);
+  else await dropSettings(claudeConfigDir, ["FORMATS"]);
+  console.log(`overrides: ${out || "none"}`);
+}
+
 async function cmdOverhead(claudeConfigDir: string, args: string[]): Promise<void> {
   const config = await loadConfig(claudeConfigDir);
 
@@ -436,6 +472,12 @@ export async function runConfig(argv: string[]): Promise<void> {
       break;
     case "margin":
       await cmdMargin(claudeConfigDir, args);
+      break;
+    case "wizard":
+      await runWizard(claudeConfigDir, args);
+      break;
+    case "format":
+      await cmdFormat(claudeConfigDir, args);
       break;
     case "overhead":
       await cmdOverhead(claudeConfigDir, args);

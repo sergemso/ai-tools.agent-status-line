@@ -23,6 +23,9 @@
 | `SECTIONS` | `STATUSLINE_SECTIONS` | Auto per agent | Enabled sections (comma-separated) |
 | `RESETS` | `STATUSLINE_RESETS` | `5h,7d,spend` | Rate limit windows to show |
 | `WIDTH` | `STATUSLINE_WIDTH` | `0` (auto) | Terminal width (0 = auto-detect) |
+| `FORMAT` | `STATUSLINE_FORMAT` | `auto` | Text style: `auto` (most readable that fits), `words`, `short`, `glyph`, `ascii` |
+| `EMOJI_WIDTH` | `STATUSLINE_EMOJI_WIDTH` | `2` | Terminal cells drawn for `⚡` (1 or 2) |
+| `FORMATS` | `STATUSLINE_FORMATS` | none | Overrides, `section.item=style` or `section=style`, comma-separated |
 | `MARGIN` | `STATUSLINE_MARGIN` | `2` | Right margin in columns |
 | `DUMP` | `STATUSLINE_DUMP` | (empty) | Debug dump file path |
 | `PRICES_TTL` | `STATUSLINE_PRICES_TTL` | `3600` | Price cache TTL (seconds) |
@@ -34,10 +37,10 @@
 | `model` | Model name and effort level | Always |
 | `context` | Context usage bar | Context window |
 | `tokens` | Session token count | Token usage |
-| `cost` | Session cost | Cost tracking |
-| `overhead` | Overhead cost of continuing | Cache + pricing |
+| `cost` | `Σ` session cost | Cost tracking |
+| `overhead` | `⚡` next-request cost, `⇲` compaction cost, `⟲` restart thresholds, cold-cache cost | Cache + pricing |
 | `cache` | Prompt cache status | Cache info |
-| `stats` | Cache hit rate | Cache hit ratio |
+| `stats` | Cache hit rate (the cache timer itself shows it only below 80%) | Cache hit ratio |
 | `resets` | Rate limit windows | Rate limits |
 
 ### Threshold Settings
@@ -154,7 +157,8 @@ STATUSLINE_PRICES_TTL=3600
 When `DUMP` is set, each run appends:
 ```
 <raw JSON input>
-cols=<terminal width> margin=<margin> level=<compaction level> visible=<visible width>
+cols=<terminal width> margin=<margin> overflow=<true|false> dropped=<items dropped> visible=<visible width>
+priorities: <group>=<priority>[<section.item>=<priority>[(dropped)] ...] ...
 ```
 
-This helps debug compaction and width issues.
+This helps debug width and drop-order issues: the `priorities:` line lists every item with its priority and marks the ones that were dropped.

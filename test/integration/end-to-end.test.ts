@@ -80,7 +80,7 @@ describe("End-to-End Pipeline - Claude Code", () => {
     const output = runFullPipeline(input);
     
     // Should show cache info
-    expect(output).toContain("⏱");
+    expect(output).toMatch(/⏱|cache/); // glyph or words style, depending on width
   });
 
   test("pipeline handles cold cache correctly", () => {
@@ -191,8 +191,8 @@ describe("End-to-End - Compaction Behavior", () => {
     
     // Should have model, context, cost, cache, resets sections (default sections)
     expect(output).toContain("Claude Sonnet 5.5");
-    expect(output).toContain("sess");
-    expect(output).toContain("⏱"); // cache
+    expect(output).toMatch(/Σ|session/);
+    expect(output).toMatch(/⏱|cache/); // cache
     expect(output).toContain("5h");
     expect(output).toContain("7d");
   });

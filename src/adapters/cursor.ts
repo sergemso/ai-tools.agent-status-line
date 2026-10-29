@@ -1,5 +1,8 @@
 // Cursor adapter
 
+import { existsSync } from "fs";
+import { join } from "path";
+import { homedir } from "os";
 import { StatusLineAdapter, createCanHandle, AgentInput } from "./adapter.js";
 import { UnifiedStatusInput, UnifiedModelInfo, UnifiedContext, UnifiedUsage, UnifiedCost, UnifiedCache, RateLimitWindow, UnifiedExtensions, AgentType } from "shared/unified-model.js";
 
@@ -63,6 +66,25 @@ export class CursorAdapter implements StatusLineAdapter {
       (v as Record<string, unknown>).param_summary !== undefined,
   });
   
+  isInstalled(): boolean {
+    return existsSync(join(homedir(), ".cursor"));
+  }
+
+  sampleInput(): AgentInput {
+    return {
+      session_id: "sample",
+      transcript_path: "sample",
+      render_width_chars: 150,
+      cwd: ".",
+      autorun: false,
+      model: { id: "sample", display_name: "Sonnet 5.5", param_summary: "" },
+      workspace: { current_dir: ".", project_dir: ".", added_dirs: [] },
+      version: "sample",
+      output_style: { name: "default" },
+      context_window: { total_input_tokens: 90000, total_output_tokens: 800, context_window_size: 200000, used_percentage: 45, remaining_percentage: 55, current_usage: null },
+    };
+  }
+
   parse(input: AgentInput): UnifiedStatusInput {
     if (!isCursorInput(input)) {
       throw new Error("Invalid Cursor input format");

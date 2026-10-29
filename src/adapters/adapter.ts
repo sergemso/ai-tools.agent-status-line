@@ -31,6 +31,18 @@ export interface StatusLineAdapter {
    * e.g., Cursor provides render_width_chars, may need different ANSI handling
    */
   formatOutput?(line: string, extensions: UnifiedExtensions): string;
+
+  /** Optional (setup wizard): a representative input of this agent, for previews */
+  sampleInput?(): AgentInput;
+
+  /**
+   * Optional (setup wizard): measure the starting context size of a fresh session from this
+   * agent's own history. Return null when it cannot be measured.
+   */
+  measureBaseline?(configDir: string): Promise<{ tokens: number; samples: number } | null>;
+
+  /** Optional (setup wizard): whether this agent seems to be installed for the current user */
+  isInstalled?(): boolean;
 }
 
 /**

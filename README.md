@@ -1,12 +1,171 @@
-# claude-code-status-line
+# Agent status line
 
-A rich, single-line status bar for **Claude Code**, **Cursor**, and **OpenCode** — model and price multiplier, context usage, session cost, prompt-cache timer, rate-limit resets. Self-shrinking on narrow terminals. TypeScript, zero runtime deps.
+A rich, single-line status bar (repository and package name: `claude-code-status-line`) for **Claude Code**, **Cursor**, and **OpenCode** — model and price multiplier, context usage, session cost, prompt-cache timer, rate-limit resets. Self-shrinking on narrow terminals. TypeScript, zero runtime deps.
 
 ```text
-Sonnet 5.5 hi | ▕▄▏ 42%/200k +1¢/call new@9 | $5.60 sess | ⏱ 25m | 12% 4h 59m / 5h | 55% 6d 23h / 7d
+Sonnet 5.5 hi | ▕▄▏ 42%/200k | $5.6Σ ⚡3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m | 12% 4h 59m / 5h | 55% 6d 23h / 7d
 ```
 
-[Quickstart](#quickstart) · [What you get](#what-you-get) · [Agents](#agents) · [Configuration](#configuration) · [Architecture](#architecture) · [Contributing](#contributing) · [Troubleshooting](#troubleshooting)
+[Quickstart](#quickstart) · [In 30 seconds](#in-30-seconds) · [Reading the line](#reading-the-line) · [Agents](#agents) · [Configuration](#configuration) · [Architecture](#architecture) · [Contributing](#contributing) · [Troubleshooting](#troubleshooting)
+
+---
+
+## In 30 seconds
+
+```text
+Sonnet 5.5 med | ▕▂▏ 18%/1M | 31¢Σ ⚡3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m
+```
+
+On a wide terminal the same line reads in words (`session 31¢ next call 3.6¢ … restart: maybe at 7, yes at 9 calls`); the symbols appear as the window narrows.
+
+- **`⚡3.6¢`: what your next message costs just to re-read the conversation so far.** It grows with the context, and jumps when the cache goes cold.
+- **`⟲ 7 9`: when to start fresh.** Expect fewer than 7 more messages: stay. 9 or more: a new session (or `/compact`) is cheaper. The numbers fall as the context grows. No `⟲` means a restart would not pay back soon.
+- **`⏱ 25m`: how long the prompt cache stays warm.** After it goes cold (`⏱ cold`) the next message re-pays for the whole conversation, which is the moment to consider restarting.
+- **`31¢Σ`** is the session's total cost so far; **`⇲ 25¢`** is what a compaction would cost.
+
+These are estimates (they ignore your prompt and the output, and assume a typical summary size), good for the shape of the decision rather than the exact bill. Run `statusline config wizard` to tune it, and read on for every indicator.
+
+## Reading the line
+
+Example, 180k tokens of context, warm cache, Sonnet pricing:
+
+```text
+Sonnet 5.5 med | ▕▁▏ 18%/1M | 31¢Σ ⚡3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m
+```
+
+### Text styles: words, short, glyph
+
+Every efficiency and cache item has three text forms. By default (`auto`) the line uses the most readable form in which everything fits your terminal width, and falls back towards glyphs as the window narrows; items start to drop only after the glyph form no longer fits.
+
+| Item | words | short | glyph |
+|---|---|---|---|
+| Session cost | `session 31¢` | `31¢ total` | `31¢Σ` |
+| Next request | `next call 3.6¢` | `next 3.6¢` | `⚡3.6¢` |
+| Compaction | `compact cost 25¢` | `compact 25¢` | `⇲ 25¢` |
+| Restart thresholds | `restart: maybe at 7, yes at 9 calls` | `restart 7–9` | `⟲ 7 9` |
+| Cache | `cache 25m` / `cache cold` | `cache 25m` / `cache cold` | `⏱ 25m` / `⏱ cold` |
+
+A fourth style, **`ascii`**, uses plain ASCII only (`31c tot`, `nx 3.6c`, `cmp 27c`, `rst 7 10`, `[##--]` for the bar) for fonts or consoles that cannot show the symbols. `auto` never picks it by width; it is chosen automatically only when the environment cannot show Unicode (non-UTF-8 locale, or `TERM=linux`/`dumb`), and the wizard offers it when you say some symbols look broken. A symbol missing from a font cannot be detected by a program, which is why the wizard asks.
+
+The words form needs roughly 120 columns, short about 100, glyph about 70. Force a style at any width:
+
+```bash
+statusline config format glyph                  # always compact, at any width
+statusline config format words                  # always readable
+statusline config format ascii                  # plain ASCII only
+statusline config format auto                   # back to width-based (default)
+statusline config format overhead glyph         # one section: cost, overhead, cache
+statusline config format cost.session words     # one item (see `statusline config format` for the keys)
+statusline config format cost.session default   # remove an override
+```
+
+Environment variables work too: `STATUSLINE_FORMAT=glyph`, `STATUSLINE_FORMATS=overhead=glyph,cost.session=words`. Precedence: item override, then section override, then the global format, then the width-based choice. A forced style never changes with width, so a forced `words` item can push other items off a narrow line. Without a detected terminal width, the line uses glyphs.
+
+The examples in this README use the glyph form.
+
+### Model group
+
+| Indicator | Meaning |
+|---|---|
+| `Sonnet 5.5` | Active model (cyan). |
+| `med` | Effort level: `lo` dim · `med` green · `hi` yellow · `xhi`/`max` red. |
+| `x1.7` | Cost multiplier, only shown when not 1: **model input price ÷ base model input price** (`BASE_MODEL`, default Claude Sonnet 5.5) × the optional effort and peak-hour factors from `~/.claude/model-multipliers.json`. `x2` means this setup costs about twice what the base model would. |
+
+Optional `~/.claude/model-multipliers.json` (not created for you; it is separate from `model-prices.json`, which is overwritten on every price refresh):
+
+```json
+{
+  "Claude Opus 5.5": {
+    "effort": { "high": 1.5 },
+    "peak": { "rate": 2, "offRate": 1, "from": 13, "to": 19, "tz": "UTC", "weekdays": true }
+  },
+  "*": {}
+}
+```
+
+`peak` applies `rate` between hours `from` (inclusive) and `to` (exclusive) in `tz`, on weekdays only when `weekdays` is true (default), and `offRate` otherwise (default 1). `"*"` is the fallback for models without an entry. The numbers are yours to supply; none are built in.
+
+### Context group
+
+| Indicator | Meaning |
+|---|---|
+| `▕▁▏ 18%/1M` | Context window use: bar, percent used, window size. 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80%. |
+
+### Session efficiency group
+
+All costs are US dollars. Amounts under $1 show as whole cents (`31¢`); under 10¢ with one decimal (`3.6¢`); under 0.05¢ as `<.1¢`. $1 to $9.95 show one decimal (`$1.2`, trailing `.0` trimmed); from $9.95 up whole dollars (`$14`).
+
+| Indicator | Meaning | How to use it |
+|---|---|---|
+| `31¢Σ` | **Total cost of this session so far** (as reported by Claude Code). | Plain spend tracking. It only goes up. |
+| `⚡3.6¢` | **Approximate cost of the next request's context**: the whole current context re-read from cache at 10% of the input price when the cache is warm, or re-written at the cache-write price (1.25× for a 5-minute cache, 2× for 1 hour) when it is cold. Your new prompt and the output tokens are **not** included. | It is a floor, not the exact bill. It grows with every turn. A jump (for example 3.6¢ → 72¢) means the cache expired and the next call re-pays for the whole context. Colours: 🟩 < 5¢ · 🟨 < 20¢ · 🟥 ≥ 20¢. |
+| `⇲ 25¢` | **Cost of `/compact`-style restarts**: reading the current context once, generating a summary, and writing the new baseline (fresh + summary tokens). | The price of starting over with a summary. Compare with `⚡`: if one call costs far less than `⇲`, a restart takes several calls to pay back, which is what `⟲` works out. |
+| `⟲ 7 9` | **Restart thresholds** in expected calls — see below. | Decide stay vs restart. |
+
+#### `⟲ Y R` — when is a restart worth it?
+
+Restarting costs `⇲` once and then each later call re-reads only a small baseline instead of the whole context. Staying costs the full context re-read on every call. So restarting is cheaper if you will make *enough more calls*. The two numbers say how many:
+
+- **First number, yellow (`Y`)**: from this many expected calls on, restarting is within 30% of the cost of staying. Start thinking about it.
+- **Second number, red (`R`)**: from this many expected calls on, restarting is cheaper than staying.
+- **Below `Y`** (green, no number): staying is clearly cheaper over that many calls.
+- Only one number (red): the yellow zone is empty, which is typical when the cache is cold (`⟲ 1` = restarting is already cheaper for even one more call).
+- Item hidden: restarting would not pay back within 99 calls (small context), or the figures are unavailable.
+
+How to read `⟲ 7 9`: "If I expect to make fewer than 7 more calls, stay. 7 to 8: a toss-up. 9 or more: restart." The numbers move as the context grows (they shrink) and when the cache goes cold (they collapse towards 1).
+
+The model behind it, per expected call count `n`:
+
+```text
+stay    = ⚡ + (n − 1) × context-read cost
+restart = ⇲ + n × (baseline + summary) read cost
+```
+
+Known simplifications: the context is assumed not to grow during those calls (this favours staying slightly); the cost of re-reading files and re-establishing state after a restart, and any loss of detail from the summary, are **not** priced (these also favour staying); output and new-input tokens are treated as equal in both cases and cancel. The baseline (`FRESH_TOKENS`, default 25,000) and summary length (`SUMMARY_TOKENS`, default 8,000) are estimates; change them with `statusline config` if your setup differs, for example a large `CLAUDE.md` plus many tools means a bigger baseline.
+
+### Cache group
+
+| Indicator | Meaning |
+|---|---|
+| `⏱ 25m` | Minutes until the prompt cache expires. 🟩→🟨→🟥 as expiry approaches. |
+| `⏱ cold` | The cache has expired; the next call re-writes the whole context (watch `⚡`). `cold +62¢` shows the extra cost of that rewrite beyond a fresh baseline. |
+| `97%` | Cache hit rate, shown only when below 80% unless the `stats` section is on. |
+
+### Rate-limit resets group
+
+| Indicator | Meaning |
+|---|---|
+| `12% 4h 59m / 5h` | Share of a rate-limit window used, time until it resets, and the window (`5h`, `7d`, `spend`). Only on subscription accounts: other sessions get no `rate_limits` from Claude Code. 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80%. |
+
+### Drop order
+
+On a narrow terminal items disappear in this order, lowest first (rank 1 stays longest):
+
+| Rank | Item | Priority |
+|---|---|---|
+| 1 | Cache timer (and the cold indicator) | 90 |
+| 2 | `⚡` next-request cost | 80 |
+| 3 | `⟲` restart thresholds | 70 |
+| 4 | Context bar | 60 |
+| 5 | `Σ` session cost | 50 |
+| 6 | Cost multiplier (`x1.7`) | 40 |
+| 7 | `⇲` compaction cost | 30 |
+| 8 | Effort level | 20 |
+| 9 | Model name | 10 |
+
+Rate-limit windows rank by use: 70 at 80% or more, 30 at 50% or more, 10 below. The order is strict (a dropped item takes everything below it with it). Run with `STATUSLINE_DUMP=/path` to see the width, how many items were dropped and a `priorities:` line listing every item with its priority and a `(dropped)` marker.
+
+Width is detected from the terminal (`stty`), so the line refits on the next refresh after a resize. Claude Code does not re-run the status line on resize, so set `refreshInterval` in `~/.claude/settings.json` (this repo's installer uses 15 s; 3 s feels immediate).
+
+---
+
+### Behaviour
+
+**Smart shrinking:** on a narrow terminal, items (not whole sections) drop one at a time, lowest priority first, until the line fits. The order is strict: once an item is dropped, everything ranked below it is dropped too. See [Drop order](#drop-order).
+
+**Groups:** items are grouped with ` | ` between groups and a single space inside a group: model · context · session efficiency · cache · (rate-limit resets and other extras). Fewer groups means fewer delimiters, so more room for data.
+
+**Auto price refresh:** model prices are fetched from Anthropic's public pricing page and cached in `~/.claude/model-prices.json` (re-fetched every hour by default).
 
 ---
 
@@ -52,24 +211,6 @@ If `@statusline/opencode-plugin` is published to npm, prints the one-line `plugi
 
 ---
 
-## What you get
-
-One line, ~90 columns by default, that shows:
-
-| Section | What it shows | Color cues |
-|---|---|---|
-| **Model** | Active model + price multiplier (`x5` = 5× your base model's input price) + effort level (`lo`/`med`/`hi`/`xhi`/`max`) | model cyan · effort: dim→green→yellow→red |
-| **Context** | 3-char bar (`▕▁▏`–`▕█▏`), percent used, window size | 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80% |
-| **Overhead** | Extra cost per call of re-reading this session vs a fresh one (`+1¢/call new@9`); cold-cache penalty (`cold +24¢`); compaction cost (`compact 38¢`) | 🟩 < 5¢ · 🟨 < 20¢ · 🟥 ≥ 20¢ |
-| **Session cost** | USD spent in the current session | plain, dim `sess` |
-| **Prompt cache** | `⏱ 25m` = minutes until cache expires, `⏱ cold` when expired, hit rate when < 80% | 🟩→🟨→🟥 as expiry approaches |
-| **Rate-limit resets** | Used % + time-to-reset for 5h, 7d, spend windows | 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80% |
-
-**Smart shrinking:** on a narrow terminal, sections drop one at a time (cache → tokens → overhead → cost → secondary windows → …) until the line fits. Six compaction levels, all configurable.
-
-**Auto price refresh:** model prices are fetched from Anthropic's public pricing page and cached in `~/.claude/model-prices.json` (re-fetched every hour by default).
-
----
 
 ## Agents
 
@@ -171,6 +312,16 @@ npm install        # postinstall rebuilds if needed
 
 Three layers, in priority order: **env var** > **config file** > **defaults**.
 
+### Setup wizard
+
+```bash
+statusline config wizard
+```
+
+A short guided setup, agent-agnostic: each adapter supplies its own sample session for the previews and, where it can, a way to measure the baseline (`--agent claude-code|cursor`, otherwise the installed agent is detected and you choose if there are several). It first **measures** what it can: for Claude Code, the median starting context of your recent sessions (read from the transcripts under `~/.claude/projects`), which sets the baseline used by `⇲` and `⟲` instead of the 25,000-token guess; agents with no usable history keep the default. It also measures how many terminal cells `⚡` takes (saved as `EMOJI_WIDTH` when it is 1) and asks whether the symbols display correctly (answering no selects the `ascii` style). Then it asks about taste: a preset (balanced, minimal, cost-watcher, everything, cryptic), a text style with a preview at 150, 110 and 80 columns, and the base model for the multiplier. It shows the final line and asks before saving. It does not touch Claude Code's `settings.json`.
+
+Scripted use: `statusline config wizard --yes --preset cost-watcher --format glyph [--fresh 29000] [--agent NAME] [--no-calibrate]`. Without `--yes` it needs a terminal. The summary-size estimate (`SUMMARY_TOKENS`) is not measured and stays at its default.
+
 ### CLI
 
 ```bash
@@ -204,6 +355,9 @@ Any setting can be overridden via `STATUSLINE_<KEY>` (e.g. `STATUSLINE_RESETS`, 
 |---|---|
 | `STATUSLINE_CUSTOM_RESET` | `label\|YYYY-MM-DD HH:MM` — adds a custom countdown section |
 | `STATUSLINE_PRICES_TTL` | Seconds before price table re-fetch (default 3600) |
+| `STATUSLINE_EMOJI_WIDTH` | Cells drawn for `⚡` (1 or 2, default 2); the wizard measures it |
+| `STATUSLINE_FORMAT` | Text style: `auto` (default), `words`, `short`, `glyph` or `ascii` — see [Text styles](#text-styles-words-short-glyph) |
+| `STATUSLINE_FORMATS` | Per-section or per-item overrides, e.g. `overhead=glyph,cost.session=words` |
 | `STATUSLINE_DUMP` | Same as `config dump PATH` |
 | `CLAUDE_CONFIG_DIR` | Config directory (default `~/.claude`) |
 
@@ -213,8 +367,8 @@ Any setting can be overridden via `STATUSLINE_<KEY>` (e.g. `STATUSLINE_RESETS`, 
 |---|---|---|
 | `model` | on | Model name, price multiplier, effort level |
 | `context` | on | Context bar + % + window size |
-| `overhead` | on | Re-read cost vs fresh session, cold-cache penalty, compaction cost |
-| `cost` | on | Session cost in USD |
+| `overhead` | on | `⚡` next-request cost, `⇲` compaction cost, `⟲` restart thresholds, cold-cache cost |
+| `cost` | on | `Σ` session cost |
 | `cache` | on | Prompt-cache timer + (optionally) hit rate |
 | `stats` | off | Always show cache hit rate (default: only when < 80%) |
 | `tokens` | off | Total session tokens (mirrors context %) |
@@ -257,7 +411,7 @@ packages/
 src/
   adapters/              claude-code.ts, cursor.ts, adapter registry
   formatter.ts           new section-priority pipeline
-  formatter.legacy.ts    preserved for fallback + golden comparisons
+  formatter.legacy.ts    preserved as the error fallback only
   statusline.ts          CLI entry: parse → format → output
   shared/                constants, colors, formatting, prices, terminal
 test/
@@ -268,7 +422,9 @@ test/
 **Key design decisions:**
 
 - **Section-priority pipeline:** sections declare a `Priority` (NONE→CRITICAL). On overflow, the layout engine drops lowest-priority items first; CRITICAL items can evict lower-priority ones.
-- **Byte-for-byte legacy parity:** the new pipeline is designed to match `formatter.legacy.ts` exactly. Golden tests are planned (see [Contributing](#contributing)).
+- **No longer legacy-identical:** this fork changed the item labels, cost formats, grouping, separators and drop order, so the pipeline does not match `formatter.legacy.ts` byte for byte. The legacy formatter remains only as the error fallback.
+- **Grouping and priorities:** `regroup()` in `packages/core/src/sections/index.ts` merges the built-in sections into groups by item key, and gives every group the same priority so item priority alone decides what drops first. The layout (`packages/core/src/layout.ts`) drops in strict order: after the first item that does not fit, everything ranked below it is dropped too. Item priorities live in the section files.
+- **Restart economics:** `⚡`, `⇲` and `⟲` are computed in `calculateOverhead` (`src/formatter.ts`) from the price table, `recache_tokens_if_cold`, the cache TTL and the `FRESH_TOKENS` / `SUMMARY_TOKENS` settings. Price-table loading (`src/shared/prices.ts`) always uses the file on disk, however old; the refresh (`src/refresh-prices.ts`) rejects tables that do not look like Claude model prices.
 - **Unicode-aware width:** CJK/emoji count as 2 display columns, combining marks as 0 — so the layout engine makes correct compaction decisions for all content.
 
 ---
@@ -309,8 +465,7 @@ npm test              # 202 tests across 10 files
 
 ### Good first issues
 
-- **Golden tests:** add `expect(newOutput).toBe(legacyOutput)` assertions on all fixtures to formally prove byte-for-byte equivalence between the new pipeline and `formatter.legacy.ts`.
-- **Remove `formatter.legacy.ts`:** once golden tests stabilize, delete the legacy formatter and the fallback path.
+- **Remove `formatter.legacy.ts`:** delete the legacy formatter and the fallback path once the new pipeline has proved stable.
 - **Type safety:** replace `any` in `adaptInputForCore()` / `RenderContext.input` with a typed `CoreRenderInput`.
 - **CI hardening:** add `npm run lint` and `tsc --noEmit` as separate required gates in `.github/workflows/ci.yml`.
 - **New renderer:** VS Code / Neovim renderers exist in `@statusline/core` but have no integration tests.
@@ -339,7 +494,8 @@ MIT — see [LICENSE](LICENSE).
 | Status line doesn't appear | Restart Claude Code. Check `~/.claude/settings.json` has a `statusLine` entry. Re-run `node dist/index.js install --force --configure`. |
 | `node: ERR_MODULE_NOT_FOUND` | You ran `node dist/index.js` directly — the unbundled dist can't resolve workspace deps. Use the bundled `bin/statusline` instead, or run via `npm run dev` / `tsx src/index.ts`. |
 | Reset windows are missing | They exist on subscription accounts only (enterprise / API-key sessions get no `rate_limits` from Claude Code). Run `statusline config dump /tmp/sl.txt` to see what your account sends. |
-| Line never shrinks on narrow terminals | Width couldn't be read from the tty. Set it manually: `statusline config width 100`. |
+| Line never shrinks on narrow terminals | Width couldn't be read from the tty (the fallback walks up to the parent process's tty and runs `stty -F`, or `stty -f` on macOS/BSD). Set it manually: `statusline config width 100`. |
+| Multiplier, `⚡`, `⇲` or `⟲` missing | The model has no entry in `~/.claude/model-prices.json`, or the multiplier is 1 (the model is your base model). `⟲` also hides when restarting would not pay back within 99 calls. |
 | Price multiplier says `x2.0` unexpectedly | It's relative to your base model (default Sonnet 5.5). Change it: `statusline config model "Claude Opus 5.5"`. |
 | A setting seems ignored | An env var `STATUSLINE_<KEY>` beats the saved value. `statusline config show` lists each value and its source. |
 | `⏱ cold` never turns into a countdown | The prompt cache has expired or hasn't been written yet; it recovers after the next request. |

@@ -1,11 +1,11 @@
 {
   "name": "claude-code-status-line",
   "owner": { "name": "sergemso" },
-  "description": "Rich status line for Claude Code, Cursor, and OpenCode — model, context bar, cost, cache timer, rate-limit resets. TypeScript, zero runtime deps.",
+  "description": "Agent status line for Claude Code, Cursor, and OpenCode — model, context, session cost, restart economics, cache timer, rate-limit resets. TypeScript, zero runtime deps.",
   "plugins": [
     {
       "name": "statusline",
-      "description": "Status line: model (price multiplier) | context bar | overhead | session cost | prompt-cache timer | rate-limit resets",
+      "description": "Agent status line: model (price multiplier) | context | session efficiency (cost, next-request, compaction, restart thresholds) | prompt-cache timer | rate-limit resets",
       "source": "./"
     }
   ]

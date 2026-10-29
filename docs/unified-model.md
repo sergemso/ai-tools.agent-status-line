@@ -93,11 +93,12 @@ interface UnifiedCost {
 
 ```typescript
 interface UnifiedCache {
-  ttlSeconds: number | null;      // Cache TTL in seconds (null if unknown)
+  ttlSeconds: number | null;      // Cache TTL in seconds (null if unknown); 3600 selects the 2x cache-write multiplier, else 1.25x
   warm: boolean;                  // Whether cache is warm
   hitRatio?: number;              // Cache hit ratio (0-1)
   expiresAt?: number;             // Cache expiry timestamp (Unix seconds)
-  recacheTokensIfCold?: number;   // Tokens needed to recache if cold
+  recacheTokensIfCold?: number;   // Tokens needed to recache if cold (also used as the current context size)
+  requests?: number;              // API requests so far in the session (Claude Code only; currently unused by the formatter)
 }
 ```
 

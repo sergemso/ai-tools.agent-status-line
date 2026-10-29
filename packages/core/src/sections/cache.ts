@@ -3,8 +3,9 @@
  * Priority: MEDIUM (30)
  */
 
-import type { Section, SectionItem, RenderContext } from "../model.js";
+import type { Section, SectionItem, RenderContext, Priority } from "../model.js";
 import { PriorityLevel as P } from "../priority.js";
+import { itemFormat, type ItemFormat } from "../format.js";
 
 // Thresholds - match legacy defaults
 const CACHE_WARN = 20; // minutes
@@ -24,8 +25,8 @@ function createCacheItems(input: any): SectionItem[] {
   if (cache.status === "warm" && cache.expiresAt !== undefined) {
     items.push({
       id: "timer",
-      content: (ctx: RenderContext) => renderCacheTimer(ctx.input.cache, ctx.config),
-      priority: P.MEDIUM,
+      content: (ctx: RenderContext) => renderCacheTimer(ctx.input.cache, ctx.config, itemFormat(ctx, "cache", "timer")),
+      priority: 90 as Priority,
       minWidth: 4,
       idealWidth: 15,
       hints: { truncatable: false },
@@ -33,8 +34,8 @@ function createCacheItems(input: any): SectionItem[] {
   } else if (cache.status === "cold") {
     items.push({
       id: "cold",
-      content: (ctx: RenderContext) => renderColdCache(ctx.input.cache),
-      priority: P.HIGH,
+      content: (ctx: RenderContext) => renderColdCache(ctx.input.cache, itemFormat(ctx, "cache", "cold")),
+      priority: 90 as Priority,
       minWidth: 8,
       idealWidth: 15,
       hints: { truncatable: false },
@@ -45,12 +46,12 @@ function createCacheItems(input: any): SectionItem[] {
 }
 
 /** Render cache timer with color based on remaining time */
-function renderCacheTimer(cache: any, config?: any): string {
+function renderCacheTimer(cache: any, config?: any, fmt: ItemFormat = "glyph"): string {
   const now = Math.floor(Date.now() / 1000);
   const rem = cache.expiresAt - now;
   if (rem <= 0) {
     // Match legacy: show "cold" when expired, with hit ratio
-    return renderColdCache(cache);
+    return renderColdCache(cache, fmt);
   }
 
   const warn = (config?.cacheWarn ?? CACHE_WARN) * 60;
@@ -66,24 +67,24 @@ function renderCacheTimer(cache: any, config?: any): string {
 
   // Include hit ratio if available (legacy combines them)
   let hitRatioStr = "";
-  if (cache.hitRatio !== undefined) {
+  if (cache.hitRatio !== undefined && Math.round(cache.hitRatio * 100) < 80) {
     const pct = Math.round(cache.hitRatio * 100);
     const hrColor = pct < 80 ? "\x1b[31m" : "\x1b[32m";
     hitRatioStr = ` ${hrColor}${pct}%\x1b[0m`;
   }
 
-  return `\x1b[2m⏱\x1b[0m ${color}${formatted}\x1b[0m${hitRatioStr}`;
+  return `\x1b[2m${fmt === "glyph" ? "⏱" : "cache"}\x1b[0m ${color}${formatted}\x1b[0m${hitRatioStr}`;
 }
 
 /** Render cold cache with hit ratio */
-function renderColdCache(cache: any): string {
+function renderColdCache(cache: any, fmt: ItemFormat = "glyph"): string {
   let hitRatioStr = "";
-  if (cache.hitRatio !== undefined) {
+  if (cache.hitRatio !== undefined && Math.round(cache.hitRatio * 100) < 80) {
     const pct = Math.round(cache.hitRatio * 100);
     const hrColor = pct < 80 ? "\x1b[31m" : "\x1b[32m";
     hitRatioStr = ` ${hrColor}${pct}%\x1b[0m`;
   }
-  return `\x1b[31m⏱ cold\x1b[0m${hitRatioStr}`;
+  return `\x1b[31m${fmt === "glyph" ? "⏱" : "cache"} cold\x1b[0m${hitRatioStr}`;
 }
 
 /** Render hit ratio with color */
