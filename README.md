@@ -12,20 +12,19 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k +1¢/call new@9 | $5.60 sess | ⏱ 25m | 12% 
 
 ## Quickstart
 
-**Claude Code** (60 seconds):
+Pick your agent — one command each:
 
-```bash
-git clone https://github.com/sergemso/claude-code-status-line.git
-cd claude-code-status-line
-npm install && npm run build:core && npm run build
-node dist/index.js install --configure
-```
+| Agent | One-shot install |
+|---|---|
+| **Claude Code** | `curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-claude-code.sh \| bash` |
+| **Cursor** | `curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-cursor.sh \| bash` |
+| **OpenCode** (TUI) | `curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-opencode.sh \| bash` |
 
-Restart Claude Code. You'll see the status line in the footer. Done.
+Each script clones the repo, builds the binary, and prints exactly what to add to your agent's settings. Restart the agent after — done.
 
-**Cursor / OpenCode** — see [Agents](#agents) below.
+**Prefer manual?** See [Manual setup](#manual-setup) below.
 
-**Requirements:** Node.js ≥ 18, `git`. No `jq`, `curl`, or `awk` needed (the old bash version needed them; the TypeScript rewrite doesn't).
+**Requirements:** Node.js ≥ 18, `git`. No `jq`, `curl`, or `awk` (the old bash version needed them; the TypeScript rewrite doesn't).
 
 ---
 
@@ -52,11 +51,11 @@ One line, ~90 columns by default, that shows:
 
 The plugin auto-detects which coding agent is feeding it data and adapts the output. Three agents are supported:
 
-| Agent | Status | How it works |
-|---|---|---|
-| **Claude Code** | ✅ Built-in | External command: Claude Code pipes JSON to stdin, plugin returns an ANSI string. Configured via `settings.json` `statusLine.command`. |
-| **Cursor** | ✅ Built-in | Same external-command contract, with Cursor-specific fields (`render_width_chars`, `autorun`, `max_mode`, `param_summary`). |
-| **OpenCode** | ✅ Plugin (`@statusline/opencode-plugin`) | OpenCode v2 has no external-command contract; instead it loads in-process TUI plugins. See [`packages/opencode-plugin/README.md`](packages/opencode-plugin/README.md). |
+| Agent | Status | How it works | Onboarding |
+|---|---|---|---|
+| **Claude Code** | ✅ Built-in | External command: Claude Code pipes JSON to stdin, plugin returns an ANSI string. Configured via `settings.json` `statusLine.command`. | one-shot script or `bin/statusline install --configure` |
+| **Cursor** | ✅ Built-in | Same external-command contract, with Cursor-specific fields (`render_width_chars`, `autorun`, `max_mode`, `param_summary`). | one-shot script, then add JSON snippet to Cursor settings |
+| **OpenCode** | ✅ Plugin (`@statusline/opencode-plugin`) | OpenCode v2 has no external-command contract; instead it loads in-process TUI plugins that claim a footer slot. TUI mode only — not ACP. | one-shot script, then add plugin path to `opencode.json` |
 
 **Add a new agent:** implement the `StatusLineAdapter` interface (see [`docs/adding-adapters.md`](docs/adding-adapters.md)). Detection is automatic via `canHandle()`.
 
@@ -65,6 +64,73 @@ Check what's registered:
 ```bash
 statusline agent list
 statusline agent detect path/to/input.json
+```
+
+### Manual setup
+
+If the one-shot scripts don't fit your workflow, here's the manual path for each agent.
+
+**Shared first step** — clone + build:
+
+```bash
+git clone https://github.com/sergemso/claude-code-status-line.git
+cd claude-code-status-line
+npm install        # postinstall hook builds the binary automatically
+```
+
+**Claude Code** — one command wires up `~/.claude/settings.json`:
+
+```bash
+./bin/statusline install --configure
+# → restart Claude Code
+```
+
+**Cursor** — copy the binary and add a settings entry:
+
+```bash
+mkdir -p ~/.claude/statusline
+cp bin/statusline ~/.claude/statusline/
+chmod +x ~/.claude/statusline/statusline
+```
+
+Then add to your Cursor `settings.json` (location varies by OS — see `scripts/install-cursor.sh` for paths):
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline/statusline"
+  }
+}
+```
+
+**OpenCode (TUI)** — build the plugin and register it:
+
+```bash
+npm run build --workspace=@statusline/opencode-plugin
+```
+
+Then add to `~/.config/opencode/opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    "/absolute/path/to/claude-code-status-line/packages/opencode-plugin/dist/index.js"
+  ]
+}
+```
+
+Run `opencode` (TUI mode) — the status line appears in the footer. **ACP mode (`opencode acp`) is not supported** — the editor renders its own UI there.
+
+### Updates
+
+```bash
+cd ~/.claude/claude-code-status-line   # or wherever you cloned
+git pull
+npm install        # postinstall rebuilds if needed
+# Claude Code: no further action (settings.json points at the stable copy)
+# Cursor / OpenCode: re-copy the binary or rebuild the plugin
 ```
 
 ---

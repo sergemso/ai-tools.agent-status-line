@@ -1,8 +1,10 @@
 {
   "name": "statusline",
-  "version": "0.1.6",
-  "description": "Status line: dir | model (price multiplier) | context bar | cache TTL | rate-limit resets",
+  "version": "1.0.0",
+  "description": "Rich status line for Claude Code — model, context bar, overhead, cost, cache timer, rate-limit resets. TypeScript rewrite with multi-agent support.",
   "author": { "name": "sergemso" },
   "repository": "https://github.com/sergemso/claude-code-status-line",
-  "license": "MIT"
+  "homepage": "https://github.com/sergemso/claude-code-status-line",
+  "license": "MIT",
+  "keywords": ["claude-code", "status-line", "cursor", "opencode", "multi-agent"]
 }
