@@ -1,0 +1,47 @@
+{
+  "name": "claude-code-status-line",
+  "version": "1.0.0",
+  "description": "Claude Code status line plugin - TypeScript rewrite",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "statusline": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc && esbuild dist/index.js --bundle --platform=node --target=node18 --format=esm --outfile=bin/statusline --external:fs --external:path --external:child_process --external:os --external:crypto --banner:js=\"#!/usr/bin/env node\"",
+    "build:bun": "bun build src/index.ts --compile --outfile bin/statusline",
+    "build:core": "npm run build --workspace=@statusline/core",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "claude-code",
+    "status-line",
+    "plugin"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@statusline/core": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "esbuild": "^0.19.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "bin/",
+    "dist/"
+  ],
+  "workspaces": [
+    "packages/*"
+  ]
+}

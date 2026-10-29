@@ -1,0 +1,14 @@
+{
+  "session_id": "cursor-abc123",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "render_width_chars": 120,
+  "cwd": "/Users/me/project",
+  "autorun": false,
+  "model": { "id": "claude-4-opus", "display_name": "Claude 4 Opus", "param_summary": "(Thinking)", "max_mode": true },
+  "workspace": { "current_dir": "/Users/me/project", "project_dir": "/Users/me/project/.cursor/transcripts", "added_dirs": [] },
+  "version": "1.2.3",
+  "output_style": { "name": "default" },
+  "context_window": { "total_input_tokens": 15234, "total_output_tokens": null, "context_window_size": 200000, "used_percentage": 34.5, "remaining_percentage": 65.5, "current_usage": null },
+  "vim": { "mode": "NORMAL" },
+  "worktree": { "name": "my-feature", "path": "/Users/me/.cursor/worktrees/repo/my-feature" }
+}

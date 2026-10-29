@@ -1,0 +1,17 @@
+{
+  "hook_event_name": "Status",
+  "session_id": "abc123",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "cwd": "/Users/me/project",
+  "model": { "id": "claude-3-5-sonnet-20241022", "display_name": "Claude Sonnet 5.5" },
+  "workspace": { "current_dir": "/Users/me/project", "project_dir": "/Users/me/project", "added_dirs": [] },
+  "version": "1.0.71",
+  "output_style": { "name": "default" },
+  "cost": { "total_cost_usd": 12.30, "total_duration_ms": 300000, "total_api_duration_ms": 100000, "total_lines_added": 500, "total_lines_removed": 100 },
+  "context_window": { "total_input_tokens": 50000, "total_output_tokens": 15000, "context_window_size": 200000, "current_usage": { "input_tokens": 30000, "output_tokens": 5000, "cache_creation_input_tokens": 10000, "cache_read_input_tokens": 20000 }, "used_percentage": 32.5, "remaining_percentage": 67.5 },
+  "rate_limits": { "five_hour": { "used_percentage": 45, "resets_at": 1700003600 }, "seven_day": { "used_percentage": 78, "resets_at": 1700600000 }, "spend_limit": { "used_percentage": 60, "resets_at": 1701200000, "period": "monthly" } },
+  "vim": { "mode": "INSERT" },
+  "prompt_cache": { "ttl": 3600, "warm": true, "expires_at": 1700007200, "hit_ratio": 0.92, "recache_tokens_if_cold": 15000 },
+  "fast_mode": false,
+  "effort": { "level": "high" }
+}
