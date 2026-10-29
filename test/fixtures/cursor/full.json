@@ -1,0 +1,14 @@
+{
+  "session_id": "cursor-full",
+  "session_name": "My Session",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "render_width_chars": 140,
+  "cwd": "/Users/me/project",
+  "autorun": true,
+  "model": { "id": "claude-3-5-sonnet-20241022", "display_name": "Claude Sonnet 5.5", "param_summary": "", "max_mode": false },
+  "workspace": { "current_dir": "/Users/me/project", "project_dir": "/Users/me/project/.cursor/transcripts", "added_dirs": [] },
+  "version": "1.2.3",
+  "output_style": { "name": "compact" },
+  "context_window": { "total_input_tokens": 80000, "total_output_tokens": 20000, "context_window_size": 200000, "used_percentage": 50.0, "remaining_percentage": 50.0, "current_usage": { "input_tokens": 40000, "output_tokens": 5000 } },
+  "vim": { "mode": "INSERT" }
+}

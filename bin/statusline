@@ -567,6 +567,326 @@ async function ensureDir(dir) {
 
 // dist/statusline.js
 init_prices();
+
+// src/adapters/adapter.ts
+var AdapterRegistry = class {
+  adapters = [];
+  agentTypeMap = /* @__PURE__ */ new Map();
+  /**
+   * Register an adapter
+   * Order matters for auto-detection - more specific adapters should be registered first
+   */
+  register(adapter) {
+    this.adapters.push(adapter);
+    this.agentTypeMap.set(adapter.agentType, adapter);
+  }
+  /**
+   * Auto-detect the correct adapter for the given input
+   * Returns the first adapter whose canHandle() returns true
+   */
+  detect(input) {
+    for (const adapter of this.adapters) {
+      if (adapter.canHandle(input)) {
+        return adapter;
+      }
+    }
+    return void 0;
+  }
+  /**
+   * Get adapter by agent type
+   */
+  get(agentType) {
+    return this.agentTypeMap.get(agentType);
+  }
+  /**
+   * Get all registered agent types
+   */
+  getAgentTypes() {
+    return Array.from(this.agentTypeMap.keys());
+  }
+  /**
+   * Get all registered adapters
+   */
+  getAll() {
+    return [...this.adapters];
+  }
+  /**
+   * Parse input using the appropriate adapter (auto-detect if not specified)
+   */
+  parse(input, agentType) {
+    let adapter;
+    if (agentType) {
+      adapter = this.get(agentType);
+      if (!adapter) {
+        throw new Error(`Unknown agent type: ${agentType}`);
+      }
+    } else {
+      adapter = this.detect(input);
+      if (!adapter) {
+        adapter = this.get("claude-code");
+        if (!adapter) {
+          throw new Error("No adapter available and no default found");
+        }
+      }
+    }
+    return adapter.parse(input);
+  }
+};
+var adapterRegistry = new AdapterRegistry();
+function createCanHandle(requiredFields) {
+  return (input) => {
+    if (!input || typeof input !== "object")
+      return false;
+    const obj = input;
+    for (const [field, check] of Object.entries(requiredFields)) {
+      if (!(field in obj) || !check(obj[field])) {
+        return false;
+      }
+    }
+    return true;
+  };
+}
+
+// src/adapters/claude-code.ts
+function isClaudeCodeInput(input) {
+  return input.hook_event_name === "Status" && typeof input.session_id === "string" && typeof input.model === "object" && input.model !== null && typeof input.model.id === "string" && typeof input.model.display_name === "string" && typeof input.context_window === "object" && input.context_window !== null && typeof input.cost === "object" && input.cost !== null && typeof input.prompt_cache === "object" && input.prompt_cache !== null;
+}
+var ClaudeCodeAdapter = class {
+  agentType = "claude-code";
+  // Detection: hook_event_name === "Status" + prompt_cache + rate_limits
+  canHandle = createCanHandle({
+    hook_event_name: (v) => v === "Status",
+    prompt_cache: (v) => v !== null && typeof v === "object",
+    rate_limits: (v) => v !== null && typeof v === "object"
+  });
+  parse(input) {
+    if (!isClaudeCodeInput(input)) {
+      throw new Error("Invalid Claude Code input format");
+    }
+    const timestamp = Date.now();
+    const model = {
+      id: input.model.id,
+      displayName: input.model.display_name,
+      provider: "anthropic",
+      capabilities: {
+        effortLevel: input.effort?.level ?? void 0
+      }
+    };
+    const contextWindow = input.context_window;
+    const totalInputTokens = contextWindow.total_input_tokens ?? 0;
+    const totalOutputTokens = contextWindow.total_output_tokens ?? 0;
+    const context = {
+      usedTokens: totalInputTokens + totalOutputTokens,
+      maxTokens: contextWindow.context_window_size ?? 0,
+      usedPercentage: contextWindow.used_percentage ?? null
+    };
+    const currentUsage = contextWindow.current_usage;
+    const usage2 = {
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      cacheReadTokens: currentUsage?.cache_read_input_tokens ?? void 0,
+      cacheWriteTokens: currentUsage?.cache_creation_input_tokens ?? void 0
+    };
+    const cost = {
+      sessionCostUsd: input.cost.total_cost_usd ?? null,
+      totalCostUsd: input.cost.total_cost_usd,
+      // same as session for now
+      currency: "USD"
+    };
+    const promptCache = input.prompt_cache ?? {};
+    const cache = {
+      ttlSeconds: promptCache.ttl ?? null,
+      warm: promptCache.warm ?? false,
+      hitRatio: promptCache.hit_ratio ?? void 0,
+      expiresAt: promptCache.expires_at ?? void 0,
+      recacheTokensIfCold: promptCache.recache_tokens_if_cold ?? void 0
+    };
+    const rateLimits = this.parseRateLimits(input.rate_limits ?? {});
+    const extensions = {
+      vimMode: input.vim?.mode,
+      worktree: input.worktree ? {
+        name: input.worktree.name,
+        path: input.worktree.path,
+        branch: input.worktree.branch
+      } : void 0,
+      outputStyle: input.output_style?.name,
+      fastMode: input.fast_mode
+    };
+    return {
+      agent: this.agentType,
+      sessionId: input.session_id,
+      timestamp,
+      model,
+      context,
+      usage: usage2,
+      cost,
+      cache,
+      rateLimits,
+      extensions
+    };
+  }
+  parseRateLimits(rateLimits) {
+    const rows = [];
+    const nums = {
+      one: 1,
+      two: 2,
+      three: 3,
+      four: 4,
+      five: 5,
+      six: 6,
+      seven: 7,
+      eight: 8,
+      nine: 9,
+      ten: 10,
+      thirty: 30
+    };
+    const unitMap = {
+      hour: "h",
+      day: "d",
+      week: "w",
+      month: "mo"
+    };
+    for (const [key, value] of Object.entries(rateLimits)) {
+      if (!value || typeof value !== "object" || value.resets_at == null)
+        continue;
+      let id = "";
+      let name = "";
+      let period = "custom";
+      if (key === "spend_limit") {
+        id = "spend";
+        name = "Spend limit";
+        const periodMap = { daily: "24h", weekly: "7d", monthly: "30d" };
+        period = value.period && periodMap[value.period] || "custom";
+      } else {
+        const match = key.match(/^([a-z]+)_(hour|day|week|month)(?:_(.+))?$/);
+        if (match && nums[match[1]]) {
+          const n = nums[match[1]];
+          const u = unitMap[match[2]];
+          id = `${n}${u}`;
+          if (match[3]) {
+            id += `-${match[3].replace(/_/g, "-")}`;
+            name = match[3].replace(/_/g, " ");
+          } else {
+            name = id;
+          }
+          period = { h: "5h", d: "24h", w: "7d", mo: "30d" }[u] || "custom";
+        } else {
+          id = key;
+          name = key;
+        }
+      }
+      const usedPercentage = value.used_percentage != null ? Math.round(value.used_percentage) : null;
+      rows.push({
+        id,
+        name,
+        used: usedPercentage,
+        limit: 100,
+        // percentage-based, so limit is 100%
+        usedPercentage,
+        resetsAt: value.resets_at,
+        period
+      });
+    }
+    return rows;
+  }
+  formatOutput(line, _extensions) {
+    return line;
+  }
+};
+var claudeCodeAdapter = new ClaudeCodeAdapter();
+
+// src/adapters/cursor.ts
+function isCursorInput(input) {
+  return typeof input.render_width_chars === "number" && typeof input.autorun === "boolean" && typeof input.model === "object" && input.model !== null && typeof input.model.param_summary === "string" && typeof input.session_id === "string" && typeof input.context_window === "object" && input.context_window !== null;
+}
+var CursorAdapter = class {
+  agentType = "cursor";
+  // Detection: render_width_chars (number) + autorun (boolean) + model.param_summary (string)
+  canHandle = createCanHandle({
+    render_width_chars: (v) => typeof v === "number",
+    autorun: (v) => typeof v === "boolean",
+    model: (v) => v !== null && typeof v === "object" && v.param_summary !== void 0
+  });
+  parse(input) {
+    if (!isCursorInput(input)) {
+      throw new Error("Invalid Cursor input format");
+    }
+    const timestamp = Date.now();
+    const model = {
+      id: input.model.id,
+      displayName: input.model.display_name,
+      provider: "anthropic",
+      // Cursor uses Anthropic models
+      capabilities: {
+        paramSummary: input.model.param_summary,
+        maxMode: input.model.max_mode
+      }
+    };
+    const contextWindow = input.context_window;
+    const totalInputTokens = contextWindow.total_input_tokens ?? 0;
+    const totalOutputTokens = contextWindow.total_output_tokens ?? 0;
+    const context = {
+      usedTokens: totalInputTokens + totalOutputTokens,
+      maxTokens: contextWindow.context_window_size ?? 0,
+      usedPercentage: contextWindow.used_percentage ?? null
+    };
+    const currentUsage = contextWindow.current_usage;
+    const usage2 = {
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      // Cursor doesn't expose cache tokens
+      cacheReadTokens: void 0,
+      cacheWriteTokens: void 0
+    };
+    const cost = {
+      sessionCostUsd: null,
+      currency: "USD"
+    };
+    const cache = {
+      ttlSeconds: null,
+      warm: false,
+      hitRatio: void 0,
+      expiresAt: void 0,
+      recacheTokensIfCold: void 0
+    };
+    const rateLimits = [];
+    const extensions = {
+      renderWidthChars: input.render_width_chars,
+      autorun: input.autorun,
+      paramSummary: input.model.param_summary,
+      maxMode: input.model.max_mode,
+      vimMode: input.vim?.mode,
+      worktree: input.worktree ? {
+        name: input.worktree.name,
+        path: input.worktree.path
+      } : void 0,
+      outputStyle: input.output_style?.name,
+      sessionName: input.session_name
+    };
+    return {
+      agent: this.agentType,
+      sessionId: input.session_id,
+      timestamp,
+      model,
+      context,
+      usage: usage2,
+      cost,
+      cache,
+      rateLimits,
+      extensions
+    };
+  }
+  formatOutput(line, _extensions) {
+    return line;
+  }
+};
+var cursorAdapter = new CursorAdapter();
+
+// src/adapters/index.ts
+adapterRegistry.register(cursorAdapter);
+adapterRegistry.register(claudeCodeAdapter);
+
+// dist/statusline.js
 var __filename4 = fileURLToPath4(import.meta.url);
 var __dirname4 = join5(__filename4, "..");
 function getEnv(key) {
@@ -615,99 +935,39 @@ async function loadSettings(claudeConfigDir) {
 function isSectionEnabled(sections, name) {
   return sections.split(",").includes(name);
 }
-function parseInput(input) {
-  const data = JSON.parse(input);
-  const modelName = data.model.display_name;
-  const fastMode = data.fast_mode ?? false;
-  const effortLevel = data.effort?.level ?? "";
-  const usedPct = data.context_window.used_percentage ?? null;
-  const contextSize = data.context_window.context_window_size ?? null;
-  const tokIn = data.context_window.total_input_tokens ?? null;
-  const tokOut = data.context_window.total_output_tokens ?? null;
-  const costUsd = data.cost.total_cost_usd ?? null;
-  const cacheTtl = data.prompt_cache.ttl ?? null;
-  const cacheWarm = data.prompt_cache.warm ?? false;
-  const cacheExpiresAt = data.prompt_cache.expires_at ?? null;
-  const cacheHitRatio = data.prompt_cache.hit_ratio ?? null;
-  const cacheRecacheTokens = data.prompt_cache.recache_tokens_if_cold ?? null;
-  const rateLimits = parseRateLimits(data.rate_limits ?? {});
+function convertRateLimitWindow(window) {
+  return {
+    key: window.id,
+    alias: window.id,
+    name: window.name,
+    pct: window.usedPercentage != null ? String(window.usedPercentage) : "-",
+    resets_at: String(window.resetsAt),
+    total: window.limit != null ? String(window.limit) : "-"
+  };
+}
+function unifiedToParsedInput(unified) {
+  const effortLevel = unified.model.capabilities.effortLevel ?? "";
+  const fastMode = unified.extensions.fastMode === true;
+  const rateLimits = unified.rateLimits.map(convertRateLimitWindow);
   const customReset = parseCustomReset();
   return {
-    model: modelName,
-    modelPlain: modelName,
+    model: unified.model.displayName,
+    modelPlain: unified.model.displayName,
     fastMode,
     effortLevel,
-    usedPct,
-    contextSize,
-    tokIn,
-    tokOut,
-    costUsd,
-    cacheTtl,
-    cacheWarm,
-    cacheExpiresAt,
-    cacheHitRatio,
-    cacheRecacheTokens,
+    usedPct: unified.context.usedPercentage,
+    contextSize: unified.context.maxTokens || null,
+    tokIn: unified.usage.inputTokens || null,
+    tokOut: unified.usage.outputTokens || null,
+    costUsd: unified.cost.sessionCostUsd,
+    cacheTtl: unified.cache.ttlSeconds,
+    cacheWarm: unified.cache.warm,
+    cacheExpiresAt: unified.cache.expiresAt ?? null,
+    cacheHitRatio: unified.cache.hitRatio ?? null,
+    cacheRecacheTokens: unified.cache.recacheTokensIfCold ?? null,
     rateLimits,
     customReset
   };
-}
-function parseRateLimits(rateLimits) {
-  const rows = [];
-  const nums = {
-    one: 1,
-    two: 2,
-    three: 3,
-    four: 4,
-    five: 5,
-    six: 6,
-    seven: 7,
-    eight: 8,
-    nine: 9,
-    ten: 10,
-    thirty: 30
-  };
-  const unitMap = {
-    hour: "h",
-    day: "d",
-    week: "w",
-    month: "mo"
-  };
-  for (const [key, value] of Object.entries(rateLimits)) {
-    if (!value || typeof value !== "object" || value.resets_at == null)
-      continue;
-    let alias = "";
-    let name = "";
-    let total = "";
-    const match = key.match(/^([a-z]+)_(hour|day|week|month)(?:_(.+))?$/);
-    if (key === "spend_limit") {
-      alias = "spend";
-      name = "";
-      total = { daily: "1d", weekly: "7d", monthly: "30d" }[value.period] || "?";
-    } else if (match && nums[match[1]]) {
-      const n = nums[match[1]];
-      const u = unitMap[match[2]];
-      total = `${n}${u}`;
-      alias = total;
-      if (match[3]) {
-        alias += `-${match[3].replace(/_/g, "-")}`;
-        name = match[3].replace(/_/g, " ");
-      }
-    } else {
-      alias = key;
-      name = key;
-    }
-    const pct = value.used_percentage != null ? Math.round(value.used_percentage) : null;
-    const resetsAt = value.resets_at;
-    rows.push({
-      key,
-      alias,
-      name,
-      pct: pct != null ? String(pct) : "-",
-      resets_at: String(resetsAt),
-      total
-    });
-  }
-  return rows;
 }
 function parseCustomReset() {
   const custom = getEnv("STATUSLINE_CUSTOM_RESET");
@@ -985,7 +1245,13 @@ function render(parts, settings, level, rateLimits, customReset) {
 async function generateStatusLine(input) {
   const claudeConfigDir = getClaudeConfigDirFromEnv();
   const settings = await loadSettings(claudeConfigDir);
-  const parsed = parseInput(input);
+  let unifiedInput;
+  try {
+    const rawInput = JSON.parse(input);
+    unifiedInput = adapterRegistry.parse(rawInput);
+  } catch (error) {
+    throw new Error(`Failed to parse input: ${error instanceof Error ? error.message : String(error)}`);
+  }
   if (settings.dumpPath) {
     try {
       const { promises: fs6 } = await import("fs");
@@ -1010,10 +1276,16 @@ async function generateStatusLine(input) {
       });
     });
   }
+  const parsed = unifiedToParsedInput(unifiedInput);
   const parts = await computeParts(parsed, settings, prices);
   let cols = settings.width;
   if (cols === 0) {
-    cols = await detectCols();
+    const agentWidth = unifiedInput.extensions.renderWidthChars;
+    if (typeof agentWidth === "number" && agentWidth > 0) {
+      cols = agentWidth;
+    } else {
+      cols = await detectCols();
+    }
   }
   let level = 0;
   let line = render(parts, settings, level, parsed.rateLimits, parsed.customReset);
@@ -1022,6 +1294,10 @@ async function generateStatusLine(input) {
       level++;
       line = render(parts, settings, level, parsed.rateLimits, parsed.customReset);
     }
+  }
+  const adapter = adapterRegistry.get(unifiedInput.agent);
+  if (adapter?.formatOutput) {
+    line = adapter.formatOutput(line, unifiedInput.extensions);
   }
   if (settings.dumpPath) {
     try {

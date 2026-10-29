@@ -1,1 +1,1 @@
-{"version":3,"file":"statusline.d.ts","sourceRoot":"","sources":["../src/statusline.ts"],"names":[],"mappings":"AAklBA,wBAAsB,kBAAkB,CAAC,KAAK,EAAE,MAAM,GAAG,OAAO,CAAC,MAAM,CAAC,CAmEvE"}
+{"version":3,"file":"statusline.d.ts","sourceRoot":"","sources":["../src/statusline.ts"],"names":[],"mappings":"AAsgBA;;GAEG;AACH,wBAAsB,kBAAkB,CAAC,KAAK,EAAE,MAAM,GAAG,OAAO,CAAC,MAAM,CAAC,CAuFvE"}

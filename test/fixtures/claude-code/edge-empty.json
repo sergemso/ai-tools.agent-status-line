@@ -1,0 +1,14 @@
+{
+  "hook_event_name": "Status",
+  "session_id": "edge-empty",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "cwd": "/Users/me/project",
+  "model": { "id": "claude-3-5-sonnet-20241022", "display_name": "Claude Sonnet 5.5" },
+  "workspace": { "current_dir": "/Users/me/project", "project_dir": "/Users/me/project", "added_dirs": [] },
+  "version": "1.0.71",
+  "output_style": { "name": "default" },
+  "cost": { "total_cost_usd": 0, "total_duration_ms": 0, "total_api_duration_ms": 0, "total_lines_added": 0, "total_lines_removed": 0 },
+  "context_window": { "total_input_tokens": 0, "total_output_tokens": 0, "context_window_size": 200000, "current_usage": null, "used_percentage": null, "remaining_percentage": null },
+  "rate_limits": {},
+  "prompt_cache": { "ttl": null, "warm": false, "expires_at": null, "hit_ratio": null, "recache_tokens_if_cold": null }
+}

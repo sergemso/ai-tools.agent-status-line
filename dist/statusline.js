@@ -1,4 +1,4 @@
-// Main status line generator
+// Main status line generator - refactored to use adapter pattern
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { DEFAULT_BASE_MODEL, DEFAULT_SECTIONS, DEFAULT_RESETS, DEFAULT_PRICES_TTL, DEFAULT_CONTEXT_WARN, DEFAULT_CONTEXT_CRIT, DEFAULT_CACHE_WARN, DEFAULT_CACHE_CRIT, DEFAULT_RESET_WARN, DEFAULT_RESET_CRIT, DEFAULT_WIDTH, DEFAULT_MARGIN, DEFAULT_FRESH_TOKENS, DEFAULT_SUMMARY_TOKENS, DEFAULT_OVERHEAD_WARN, DEFAULT_OVERHEAD_CRIT, BLOCK_CHARS, LEFT_BORDER, RIGHT_BORDER, } from "shared/constants.js";
@@ -7,6 +7,7 @@ import { fmtDur, fmtTok, money } from "shared/formatting.js";
 import { detectCols, visibleWidth } from "shared/terminal.js";
 import { loadConfig, getSetting } from "shared/config-file.js";
 import { loadPrices, matchModelPrice } from "shared/prices.js";
+import { adapterRegistry } from "adapters/index.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = join(__filename, "..");
 function getEnv(key) {
@@ -17,7 +18,6 @@ function getClaudeConfigDirFromEnv() {
 }
 async function loadSettings(claudeConfigDir) {
     const config = await loadConfig(claudeConfigDir);
-    // Helper to get value: env > config > default
     const get = (key, defaultValue) => {
         const envKey = `STATUSLINE_${key}`;
         const envVal = getEnv(envKey);
@@ -56,108 +56,48 @@ async function loadSettings(claudeConfigDir) {
 function isSectionEnabled(sections, name) {
     return sections.split(",").includes(name);
 }
-function parseInput(input) {
-    const data = JSON.parse(input);
-    // Model
-    const modelName = data.model.display_name;
-    const fastMode = data.fast_mode ?? false;
-    const effortLevel = data.effort?.level ?? "";
-    // Context
-    const usedPct = data.context_window.used_percentage ?? null;
-    const contextSize = data.context_window.context_window_size ?? null;
-    // Tokens and cost
-    const tokIn = data.context_window.total_input_tokens ?? null;
-    const tokOut = data.context_window.total_output_tokens ?? null;
-    const costUsd = data.cost.total_cost_usd ?? null;
-    // Cache
-    const cacheTtl = data.prompt_cache.ttl ?? null;
-    const cacheWarm = data.prompt_cache.warm ?? false;
-    const cacheExpiresAt = data.prompt_cache.expires_at ?? null;
-    const cacheHitRatio = data.prompt_cache.hit_ratio ?? null;
-    const cacheRecacheTokens = data.prompt_cache.recache_tokens_if_cold ?? null;
-    // Rate limits
-    const rateLimits = parseRateLimits(data.rate_limits ?? {});
-    // Custom reset
+/**
+ * Convert unified rate limit window to legacy ParsedRateLimitRow format
+ */
+function convertRateLimitWindow(window) {
+    return {
+        key: window.id,
+        alias: window.id,
+        name: window.name,
+        pct: window.usedPercentage != null ? String(window.usedPercentage) : "-",
+        resets_at: String(window.resetsAt),
+        total: window.limit != null ? String(window.limit) : "-",
+    };
+}
+/**
+ * Convert UnifiedStatusInput to legacy ParsedInput format for backward compatibility
+ */
+function unifiedToParsedInput(unified) {
+    // Extract effort level from model capabilities
+    const effortLevel = unified.model.capabilities.effortLevel ?? "";
+    const fastMode = unified.extensions.fastMode === true;
+    // Convert rate limits
+    const rateLimits = unified.rateLimits.map(convertRateLimitWindow);
+    // Parse custom reset from env (same as before)
     const customReset = parseCustomReset();
     return {
-        model: modelName,
-        modelPlain: modelName,
+        model: unified.model.displayName,
+        modelPlain: unified.model.displayName,
         fastMode,
         effortLevel,
-        usedPct,
-        contextSize,
-        tokIn,
-        tokOut,
-        costUsd,
-        cacheTtl,
-        cacheWarm,
-        cacheExpiresAt,
-        cacheHitRatio,
-        cacheRecacheTokens,
+        usedPct: unified.context.usedPercentage,
+        contextSize: unified.context.maxTokens || null,
+        tokIn: unified.usage.inputTokens || null,
+        tokOut: unified.usage.outputTokens || null,
+        costUsd: unified.cost.sessionCostUsd,
+        cacheTtl: unified.cache.ttlSeconds,
+        cacheWarm: unified.cache.warm,
+        cacheExpiresAt: unified.cache.expiresAt ?? null,
+        cacheHitRatio: unified.cache.hitRatio ?? null,
+        cacheRecacheTokens: unified.cache.recacheTokensIfCold ?? null,
         rateLimits,
         customReset,
     };
-}
-function parseRateLimits(rateLimits) {
-    const rows = [];
-    const nums = {
-        one: 1,
-        two: 2,
-        three: 3,
-        four: 4,
-        five: 5,
-        six: 6,
-        seven: 7,
-        eight: 8,
-        nine: 9,
-        ten: 10,
-        thirty: 30,
-    };
-    const unitMap = {
-        hour: "h",
-        day: "d",
-        week: "w",
-        month: "mo",
-    };
-    for (const [key, value] of Object.entries(rateLimits)) {
-        if (!value || typeof value !== "object" || value.resets_at == null)
-            continue;
-        let alias = "";
-        let name = "";
-        let total = "";
-        // Parse key pattern: n_unit[_suffix]
-        const match = key.match(/^([a-z]+)_(hour|day|week|month)(?:_(.+))?$/);
-        if (key === "spend_limit") {
-            alias = "spend";
-            name = "";
-            total = { daily: "1d", weekly: "7d", monthly: "30d" }[value.period] || "?";
-        }
-        else if (match && nums[match[1]]) {
-            const n = nums[match[1]];
-            const u = unitMap[match[2]];
-            total = `${n}${u}`;
-            alias = total;
-            if (match[3]) {
-                alias += `-${match[3].replace(/_/g, "-")}`;
-                name = match[3].replace(/_/g, " ");
-            }
-        }
-        else {
-            alias = key;
-            name = key;
-        }
-        const pct = value.used_percentage != null ? Math.round(value.used_percentage) : null;
-        const resetsAt = value.resets_at;
-        rows.push({
-            key,
-            alias,
-            name,
-            pct: pct != null ? String(pct) : "-",
-            resets_at: String(resetsAt),
-            total,
-        });
-    }
-    return rows;
 }
 function parseCustomReset() {
     const custom = getEnv("STATUSLINE_CUSTOM_RESET");
@@ -166,7 +106,6 @@ function parseCustomReset() {
     const [label, dateStr] = custom.split("|");
     if (!label || !dateStr)
         return null;
-    // Try parsing with GNU date format first, then strict format
     let timestamp;
     try {
         timestamp = new Date(dateStr).getTime();
@@ -274,10 +213,8 @@ async function computeParts(parsed, settings, prices) {
                     ccolor = YELLOW;
                 if (rem < settings.cacheCrit * 60)
                     ccolor = RED;
-                // Round to whole minutes (like bash: rem=$(( rem / 60 * 60 )))
                 let remMinutes = rem >= 60 ? Math.floor(rem / 60) * 60 : rem;
                 let ctime = fmtDur(remMinutes);
-                // Strip trailing " 0s" and spaces (like bash: ctime=${ctime% 0s}; ctime=${ctime// /})
                 ctime = ctime.replace(/ 0s$/, "").replace(/ /g, "");
                 cacheDisplay = `${dim("⏱")} ${ccolor}${ctime}${RESET}`;
             }
@@ -295,12 +232,11 @@ async function computeParts(parsed, settings, prices) {
     if (isSectionEnabled(settings.sections, "overhead") && cacheTtl !== null && cacheRecacheTokens !== null) {
         const ctoks = cacheRecacheTokens;
         if (ctoks > settings.freshTokens) {
-            // Get prices for current model
             const modelPrices = prices.models[model] || prices.models[`Claude ${model}`] || prices.models[model.toLowerCase()] || prices.models[`claude ${model.toLowerCase()}`];
             if (modelPrices) {
                 const pin = fastMode && modelPrices.fast_in ? modelPrices.fast_in : modelPrices.in;
                 const pout = modelPrices.out;
-                const wmul = cacheTtl === 3600 ? 2 : 1.25; // 1h = 2x, 5m = 1.25x
+                const wmul = cacheTtl === 3600 ? 2 : 1.25;
                 const d = ctoks - settings.freshTokens;
                 const oCall = (d * 0.1 * pin) / 1e6;
                 const oCold = (d * wmul * pin) / 1e6;
@@ -400,8 +336,8 @@ function render(parts, settings, level, rateLimits, customReset) {
     let tokensPart = parts.tokens;
     let customPart = parts.custom;
     if (level >= 1) {
-        contextPart = parts.context.split(" ")[0] + " " + parts.context.split(" ")[1]; // bar_s equivalent
-        customPart = null; // Drop custom reset at level 1+
+        contextPart = parts.context.split(" ")[0] + " " + parts.context.split(" ")[1];
+        customPart = null;
     }
     if (level >= 2) {
         cachePart = parts.cacheShort;
@@ -412,8 +348,7 @@ function render(parts, settings, level, rateLimits, customReset) {
         costPart = "";
     }
     if (level >= 4) {
-        modelPart = cyan(parts.model.split(" x")[0]); // model_plain
-        // effort already removed
+        modelPart = cyan(parts.model.split(" x")[0]);
     }
     if (level >= 5) {
         cachePart = "";
@@ -423,7 +358,6 @@ function render(parts, settings, level, rateLimits, customReset) {
     if (level >= 6) {
         // limits will be empty
     }
-    // Build limits
     let limits = buildLimits(rateLimits, settings.resets, showNamed, showTotal, settings.resetWarn, settings.resetCrit);
     if (onlyFirstWindow) {
         limits = limits.slice(0, 1);
@@ -456,10 +390,21 @@ function render(parts, settings, level, rateLimits, customReset) {
         outputParts.push(...limits);
     return outputParts.filter((p) => p).join(sep);
 }
+/**
+ * Generate status line from JSON input using adapter pattern
+ */
 export async function generateStatusLine(input) {
     const claudeConfigDir = getClaudeConfigDirFromEnv();
     const settings = await loadSettings(claudeConfigDir);
-    const parsed = parseInput(input);
+    // Parse input using adapter registry (auto-detects agent)
+    let unifiedInput;
+    try {
+        const rawInput = JSON.parse(input);
+        unifiedInput = adapterRegistry.parse(rawInput);
+    }
+    catch (error) {
+        throw new Error(`Failed to parse input: ${error instanceof Error ? error.message : String(error)}`);
+    }
     // Dump raw input if requested
     if (settings.dumpPath) {
         try {
@@ -478,24 +423,30 @@ export async function generateStatusLine(input) {
         const stat = await import("fs").then((fs) => fs.promises.stat(pricesPath));
         const age = Date.now() - stat.mtimeMs;
         if (age >= settings.pricesTtl * 1000) {
-            // Fire and forget background refresh
             import("./refresh-prices.js").then(({ refreshPrices }) => {
                 refreshPrices(claudeConfigDir, settings.pricesTtl).catch(() => { });
             });
         }
     }
     catch {
-        // File doesn't exist, trigger refresh
         import("./refresh-prices.js").then(({ refreshPrices }) => {
             refreshPrices(claudeConfigDir, settings.pricesTtl).catch(() => { });
         });
     }
+    // Convert unified input to legacy format for computeParts
+    const parsed = unifiedToParsedInput(unifiedInput);
     // Compute parts
     const parts = await computeParts(parsed, settings, prices);
-    // Terminal width
+    // Terminal width - use agent-provided width if available (Cursor)
     let cols = settings.width;
     if (cols === 0) {
-        cols = await detectCols();
+        const agentWidth = unifiedInput.extensions.renderWidthChars;
+        if (typeof agentWidth === "number" && agentWidth > 0) {
+            cols = agentWidth;
+        }
+        else {
+            cols = await detectCols();
+        }
     }
     // Render with compaction
     let level = 0;
@@ -505,6 +456,11 @@ export async function generateStatusLine(input) {
             level++;
             line = render(parts, settings, level, parsed.rateLimits, parsed.customReset);
         }
+    }
+    // Apply agent-specific output formatting if needed
+    const adapter = adapterRegistry.get(unifiedInput.agent);
+    if (adapter?.formatOutput) {
+        line = adapter.formatOutput(line, unifiedInput.extensions);
     }
     // Dump width diagnostics
     if (settings.dumpPath) {

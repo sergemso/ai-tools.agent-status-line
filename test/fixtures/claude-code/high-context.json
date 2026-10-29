@@ -1,0 +1,14 @@
+{
+  "hook_event_name": "Status",
+  "session_id": "high-ctx",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "cwd": "/Users/me/project",
+  "model": { "id": "claude-3-opus-20240229", "display_name": "Claude Opus 4" },
+  "workspace": { "current_dir": "/Users/me/project", "project_dir": "/Users/me/project", "added_dirs": [] },
+  "version": "1.0.71",
+  "output_style": { "name": "default" },
+  "cost": { "total_cost_usd": 25.00, "total_duration_ms": 500000, "total_api_duration_ms": 200000, "total_lines_added": 1000, "total_lines_removed": 200 },
+  "context_window": { "total_input_tokens": 170000, "total_output_tokens": 30000, "context_window_size": 200000, "current_usage": { "input_tokens": 100000, "output_tokens": 10000, "cache_creation_input_tokens": 5000, "cache_read_input_tokens": 20000 }, "used_percentage": 85.0, "remaining_percentage": 15.0 },
+  "rate_limits": { "five_hour": { "used_percentage": 90, "resets_at": 1700003600 } },
+  "prompt_cache": { "ttl": 300, "warm": true, "expires_at": 1700000500, "hit_ratio": 0.75, "recache_tokens_if_cold": 50000 }
+}

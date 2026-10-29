@@ -1,0 +1,14 @@
+{
+  "hook_event_name": "Status",
+  "session_id": "multi-limits",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "cwd": "/Users/me/project",
+  "model": { "id": "claude-3-5-sonnet-20241022", "display_name": "Claude Sonnet 5.5" },
+  "workspace": { "current_dir": "/Users/me/project", "project_dir": "/Users/me/project", "added_dirs": [] },
+  "version": "1.0.71",
+  "output_style": { "name": "default" },
+  "cost": { "total_cost_usd": 15.75, "total_duration_ms": 400000, "total_api_duration_ms": 150000, "total_lines_added": 800, "total_lines_removed": 150 },
+  "context_window": { "total_input_tokens": 80000, "total_output_tokens": 25000, "context_window_size": 200000, "current_usage": { "input_tokens": 40000, "output_tokens": 8000, "cache_creation_input_tokens": 5000, "cache_read_input_tokens": 10000 }, "used_percentage": 52.5, "remaining_percentage": 47.5 },
+  "rate_limits": { "five_hour": { "used_percentage": 65, "resets_at": 1700003600 }, "seven_day": { "used_percentage": 82, "resets_at": 1700600000 }, "spend_limit": { "used_percentage": 70, "resets_at": 1701200000, "period": "monthly" }, "one_day": { "used_percentage": 40, "resets_at": 1700086400 } },
+  "prompt_cache": { "ttl": 3600, "warm": true, "expires_at": 1700007200, "hit_ratio": 0.90, "recache_tokens_if_cold": 15000 }
+}
