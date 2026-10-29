@@ -4,12 +4,14 @@
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-cursor.sh | bash
 #
-# Cursor uses the same external-command contract as Claude Code, but its
-# settings file lives in a different location. This script:
-#   1. Installs the plugin (shared with Claude Code)
-#   2. Prints the exact JSON snippet to add to Cursor's settings
+# Cursor uses the same external-command statusLine contract as Claude Code.
+# Cursor's own plugin marketplace is team/enterprise-only (no public registry
+# for status-line plugins), so the install path is:
+#   1. Clone + build the shared binary
+#   2. Copy it to a stable location
+#   3. Print the JSON snippet to add to Cursor's settings.json
 #
-# Cursor settings location varies by OS:
+# Cursor settings.json location:
 #   macOS:   ~/Library/Application Support/Cursor/User/settings.json
 #   Linux:   ~/.config/Cursor/User/settings.json
 #   Windows: %APPDATA%\Cursor\User\settings.json
@@ -22,7 +24,7 @@ BRANCH="${STATUSLINE_BRANCH:-main}"
 
 echo "→ Installing claude-code-status-line for Cursor"
 
-# 1. Clone/update + build (same as Claude Code installer)
+# 1. Clone/update + build (shared with Claude Code installer)
 if [ -d "$INSTALL_DIR/.git" ]; then
   cd "$INSTALL_DIR"
   git fetch origin "$BRANCH" --quiet
@@ -39,7 +41,7 @@ npm install --silent 2>&1 | tail -3 || {
   exit 1
 }
 
-# Copy the binary to a stable location
+# 2. Copy the binary to a stable location
 DEST_DIR="$HOME/.claude/statusline"
 mkdir -p "$DEST_DIR"
 cp "$INSTALL_DIR/bin/statusline" "$DEST_DIR/statusline"
@@ -63,3 +65,7 @@ echo "  macOS:  ~/Library/Application Support/Cursor/User/settings.json"
 echo "  Linux:  ~/.config/Cursor/User/settings.json"
 echo ""
 echo "After saving, restart Cursor. The status line will appear in the footer."
+echo ""
+echo "Note: Cursor's plugin marketplace is team/enterprise-only and has no"
+echo "      statusLine hook, so there's no marketplace install path — only"
+echo "      this script or manual setup (see README.md → Manual setup)."

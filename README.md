@@ -12,6 +12,14 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k +1¢/call new@9 | $5.60 sess | ⏱ 25m | 12% 
 
 ## Quickstart
 
+Three install paths per agent — pick what fits.
+
+| Agent | Marketplace / registry | One-shot script | Manual |
+|---|---|---|---|
+| **Claude Code** | ✅ `/plugin marketplace add` + `/plugin install` + `/statusline:setup` (recommended) | `curl -fsSL …/install-claude-code.sh \| bash` | git clone + `npm install` + `./bin/statusline install --configure` |
+| **Cursor** | — *(team/enterprise marketplace only; no public statusLine plugin registry)* | `curl -fsSL …/install-cursor.sh \| bash` | git clone + build + copy binary + add JSON to settings.json |
+| **OpenCode** (TUI) | ✅ `opencode plugin add @statusline/opencode-plugin` *(after npm publish)* | `curl -fsSL …/install-opencode.sh \| bash` | git clone + build plugin + add path to `opencode.json` |
+
 ### Claude Code — via plugin marketplace (recommended)
 
 ```
@@ -20,17 +28,23 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k +1¢/call new@9 | $5.60 sess | ⏱ 25m | 12% 
 /statusline:setup
 ```
 
-The first `/statusline:setup` builds the binary and wires up `~/.claude/settings.json`. A SessionStart hook keeps the binary in sync on updates — re-run `/plugin marketplace update` + `/reload-plugins`, no setup needed again. Restart Claude Code after the first install.
+The first `/statusline:setup` builds the binary and wires up `~/.claude/settings.json`. A SessionStart hook (`scripts/bootstrap.sh`) keeps the binary in sync on updates. Restart Claude Code after the first install.
 
-### All agents — one-shot installers
+### Cursor — one-shot
 
-| Agent | One-shot install |
-|---|---|
-| **Claude Code** | `curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-claude-code.sh \| bash` |
-| **Cursor** | `curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-cursor.sh \| bash` |
-| **OpenCode** (TUI) | `curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-opencode.sh \| bash` |
+```bash
+curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-cursor.sh | bash
+```
 
-Each script clones the repo, builds the binary, and prints exactly what to add to your agent's settings. Restart the agent after — done.
+Builds the binary, copies it to `~/.claude/statusline/`, prints the JSON snippet to add to Cursor's `settings.json`. Restart Cursor after.
+
+### OpenCode (TUI) — one-shot
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-opencode.sh | bash
+```
+
+If `@statusline/opencode-plugin` is published to npm, prints the one-line `plugins` entry for `opencode.json`. Otherwise clones the repo, builds the plugin, and prints the local path to register. Run `opencode` (TUI mode) after.
 
 **Prefer manual?** See [Manual setup](#manual-setup) below.
 
