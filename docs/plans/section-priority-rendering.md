@@ -75,7 +75,7 @@ export function getSections(config: UserConfig, ctx: RenderContext): Section[]; 
 
 ## Phase 3: Layout Engine (Priority-Based Shrinking)
 
-### 3.1 Core Algorithm `[ ]`
+### 3.1 Core Algorithm `[x]`
 ```typescript
 // packages/core/src/layout.ts
 export function buildLayout(sections: Section[], ctx: RenderContext): SectionLayout {
@@ -88,7 +88,7 @@ export function buildLayout(sections: Section[], ctx: RenderContext): SectionLay
 }
 ```
 
-### 3.2 Width Estimation `[ ]`
+### 3.2 Width Estimation `[x]`
 - `estimateWidth(item, ctx)` - ANSI-stripped length + icon padding
 - Account for separators (`" | "` = 3 chars)
 
