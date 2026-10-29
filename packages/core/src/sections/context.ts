@@ -3,8 +3,9 @@
  * Priority: HIGH (70)
  */
 
-import type { Section, SectionItem, RenderContext } from "../model.js";
+import type { Section, SectionItem, RenderContext, Priority } from "../model.js";
 import { PriorityLevel as P } from "../priority.js";
+import { itemFormat } from "../format.js";
 
 // Block characters for context bar (8 levels)
 const BLOCK_CHARS = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
@@ -29,8 +30,8 @@ function createContextItems(input: any): SectionItem[] {
   if (context.percentage !== undefined) {
     items.push({
       id: "bar",
-      content: (ctx: RenderContext) => renderContextBar(ctx.input.context, ctx.config),
-      priority: P.HIGH,
+      content: (ctx: RenderContext) => renderContextBar(ctx.input.context, ctx.config, itemFormat(ctx, "context", "bar") === "ascii"),
+      priority: 60 as Priority,
       minWidth: 10,
       idealWidth: 20,
       hints: { truncatable: false },
@@ -41,7 +42,7 @@ function createContextItems(input: any): SectionItem[] {
 }
 
 /** Render a visual context bar with percentage and size - matches legacy formatter */
-function renderContextBar(context: any, config?: any): string {
+function renderContextBar(context: any, config?: any, ascii = false): string {
   const pct = Math.min(100, Math.max(0, context.percentage ?? 0));
   const width = 8; // 8 block characters
   const blockIdx = Math.min(Math.floor(pct / 12.5), 7);
@@ -55,7 +56,10 @@ function renderContextBar(context: any, config?: any): string {
   else if (pct >= warn) color = "\x1b[33m"; // YELLOW
 
   const RESET = "\x1b[0m";
-  const ctxChar = `${color}${LEFT_BORDER}${fill}${RIGHT_BORDER}${RESET}`;
+  const cells = Math.round((pct / 100) * 4);
+  const ctxChar = ascii
+    ? `${color}[${"#".repeat(cells)}${"-".repeat(4 - cells)}]${RESET}`
+    : `${color}${LEFT_BORDER}${fill}${RIGHT_BORDER}${RESET}`;
   const ctxPct = `${color}${Math.round(pct)}%${RESET}`;
 
   const sizeStr = context.tokensTotal

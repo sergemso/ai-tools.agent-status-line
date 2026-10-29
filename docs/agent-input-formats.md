@@ -37,7 +37,7 @@ Only **Claude Code** and **Cursor** have this exact mechanism. Other agents use 
 ### Input JSON Schema
 ```typescript
 interface ClaudeCodeStatusInput {
-  hook_event_name: "Status";
+  hook_event_name?: "Status"; // not sent by Claude Code 2.1.x; do not rely on it
   session_id: string;
   transcript_path: string;
   cwd: string;
@@ -84,7 +84,7 @@ interface ClaudeCodeStatusInput {
   fast_mode?: boolean;
   effort?: { level: string | null };
   prompt_cache?: {
-    ttl?: number;
+    ttl?: number | string; // seconds, or "5m" / "1h" (Claude Code 2.1.x sends a string)
     warm?: boolean;
     expires_at?: number;
     requests?: number;
@@ -107,7 +107,8 @@ interface ClaudeCodeStatusInput {
 | `usage.cacheReadTokens` | `context_window.current_usage?.cache_read_input_tokens` |
 | `usage.cacheWriteTokens` | `context_window.current_usage?.cache_creation_input_tokens` |
 | `cost.sessionCostUsd` | `cost.total_cost_usd` |
-| `cache.ttlSeconds` | `prompt_cache.ttl` |
+| `cache.ttlSeconds` | `prompt_cache.ttl` (parsed: `"1h"` → 3600, `"5m"` → 300) |
+| `cache.requests` | `prompt_cache.requests` |
 | `cache.warm` | `prompt_cache.warm` |
 | `cache.hitRatio` | `prompt_cache.hit_ratio` |
 | `cache.expiresAt` | `prompt_cache.expires_at` |
@@ -360,10 +361,12 @@ function canHandle(input: unknown): boolean {
     return true;
   }
   
-  // Claude Code: has hook_event_name === "Status", prompt_cache, rate_limits
-  if (obj.hook_event_name === "Status" &&
-      obj.prompt_cache &&
-      obj.rate_limits) {
+  // Claude Code: session_id, transcript_path and context_window, and none of the Cursor
+  // markers. hook_event_name and rate_limits are NOT always sent (rate_limits is subscription-only).
+  if (typeof obj.session_id === "string" &&
+      typeof obj.transcript_path === "string" &&
+      obj.context_window && typeof obj.context_window === "object" &&
+      !("render_width_chars" in obj)) {
     return true;
   }
   

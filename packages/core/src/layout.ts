@@ -162,6 +162,7 @@ export function buildLayout(
   // 4. Greedy fit with critical eviction
   const keptItems = new Set<string>(); // "sectionId:itemId"
   let usedWidth = 0;
+  let cutoff = false; // once an item is dropped, everything lower-ranked drops too (strict order)
 
   for (const entry of allItems) {
     const { sectionId, item, compositePriority } = entry;
@@ -186,7 +187,7 @@ export function buildLayout(
     }
 
     // Check if we have space
-    if (usedWidth + itemWidth <= availableWidth) {
+    if (!cutoff && usedWidth + itemWidth <= availableWidth) {
       // We have space - keep this item
       keptItems.add(itemKey);
       usedWidth += itemWidth;
@@ -236,6 +237,7 @@ export function buildLayout(
         }
       } else {
         // Non-critical item - drop it
+        cutoff = true;
         droppedItems.push({
           sectionId,
           itemId: item.id,

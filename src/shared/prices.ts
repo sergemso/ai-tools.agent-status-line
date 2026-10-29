@@ -24,17 +24,16 @@ export async function loadPrices(claudeConfigDir: string, ttl: number = DEFAULT_
     return pricesCache.table;
   }
 
-  // Check file mtime
+  // Read the file even when it is older than the TTL: the TTL only decides when to refresh,
+  // a stale table is far better than none (no multiplier, no overhead items).
   try {
-    const stat = await fs.stat(path);
-    if (now - stat.mtimeMs < ttl * 1000) {
-      const content = await fs.readFile(path, "utf-8");
-      const table = JSON.parse(content) as PriceTable;
-      pricesCache = { table, mtime: stat.mtimeMs };
+    const table = JSON.parse(await fs.readFile(path, "utf-8")) as PriceTable;
+    if (table && typeof table.models === "object" && table.models !== null) {
+      pricesCache = { table, mtime: now };
       return table;
     }
   } catch {
-    // File doesn't exist or error
+    // File doesn't exist or is not valid JSON
   }
 
   // Return empty table if not found

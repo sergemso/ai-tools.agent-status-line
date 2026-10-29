@@ -1,6 +1,9 @@
 // Claude Code adapter - Reference implementation
 
 import { StatusLineAdapter, createCanHandle, AgentInput } from "./adapter.js";
+import { promises as fs, existsSync } from "fs";
+import { join } from "path";
+import { homedir } from "os";
 import { UnifiedStatusInput, UnifiedModelInfo, UnifiedContext, UnifiedUsage, UnifiedCost, UnifiedCache, RateLimitWindow, UnifiedExtensions, AgentType } from "shared/unified-model.js";
 
 interface ClaudeCodeInput {
@@ -50,7 +53,7 @@ interface ClaudeCodeInput {
   fast_mode?: boolean;
   effort?: { level: string | null };
   prompt_cache?: {
-    ttl?: number;
+    ttl?: number | string; // seconds, or "5m" / "1h" as sent by newer Claude Code
     warm?: boolean;
     expires_at?: number;
     requests?: number;
@@ -62,7 +65,6 @@ interface ClaudeCodeInput {
 
 function isClaudeCodeInput(input: AgentInput): input is ClaudeCodeInput {
   return (
-    input.hook_event_name === "Status" &&
     typeof input.session_id === "string" &&
     typeof input.model === "object" &&
     input.model !== null &&
@@ -71,22 +73,76 @@ function isClaudeCodeInput(input: AgentInput): input is ClaudeCodeInput {
     typeof input.context_window === "object" &&
     input.context_window !== null &&
     typeof input.cost === "object" &&
-    input.cost !== null &&
-    typeof input.prompt_cache === "object" &&
-    input.prompt_cache !== null
+    input.cost !== null
   );
 }
 
 export class ClaudeCodeAdapter implements StatusLineAdapter {
   readonly agentType: AgentType = "claude-code";
   
-  // Detection: hook_event_name === "Status" + prompt_cache + rate_limits
-  readonly canHandle = createCanHandle({
-    hook_event_name: (v) => v === "Status",
-    prompt_cache: (v) => v !== null && typeof v === "object",
-    rate_limits: (v) => v !== null && typeof v === "object",
-  });
+  // Detection: session_id + transcript_path + context_window (hook_event_name and rate_limits are not always sent)
+  readonly canHandle = (input: unknown): boolean =>
+    createCanHandle({
+      session_id: (v) => typeof v === "string",
+      transcript_path: (v) => typeof v === "string",
+      context_window: (v) => v !== null && typeof v === "object",
+    })(input) && !("render_width_chars" in (input as object)); // Cursor input also has these fields
   
+  isInstalled(): boolean {
+    return existsSync(join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "settings.json"));
+  }
+
+  sampleInput(): AgentInput {
+    return {
+      session_id: "sample",
+      transcript_path: "sample",
+      model: { id: "claude-sonnet-5-5", display_name: "Sonnet 5.5" },
+      effort: { level: "medium" },
+      context_window: { total_input_tokens: 180000, total_output_tokens: 800, context_window_size: 1000000, used_percentage: 18 },
+      cost: { total_cost_usd: 0.31 },
+      prompt_cache: { ttl: "1h", warm: true, hit_ratio: 0.97, expires_at: Math.floor(Date.now() / 1000) + 25 * 60, requests: 120, recache_tokens_if_cold: 180000 },
+    };
+  }
+
+  /** Median starting context (first assistant message usage) over the newest session transcripts. */
+  async measureBaseline(configDir: string, maxFiles = 8): Promise<{ tokens: number; samples: number } | null> {
+    const root = join(configDir, "projects");
+    const files: Array<{ path: string; mtime: number }> = [];
+    try {
+      for (const dir of await fs.readdir(root)) {
+        let names: string[] = [];
+        try { names = await fs.readdir(join(root, dir)); } catch { continue; }
+        for (const n of names) {
+          if (!n.endsWith(".jsonl")) continue;
+          const path = join(root, dir, n);
+          try { files.push({ path, mtime: (await fs.stat(path)).mtimeMs }); } catch { /* skip */ }
+        }
+      }
+    } catch { return null; }
+
+    const values: number[] = [];
+    for (const f of files.sort((a, b) => b.mtime - a.mtime).slice(0, maxFiles * 3)) {
+      if (values.length >= maxFiles) break;
+      let text = "";
+      try { text = await fs.readFile(f.path, "utf8"); } catch { continue; }
+      for (const line of text.split("\n")) {
+        if (!line.includes('"usage"')) continue;
+        try {
+          const o = JSON.parse(line);
+          const u = o?.message?.usage;
+          if (o?.type === "assistant" && u) {
+            const total = (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0);
+            if (total >= 5000) values.push(total);
+            break;
+          }
+        } catch { /* ignore */ }
+      }
+    }
+    if (values.length === 0) return null;
+    values.sort((a, b) => a - b);
+    return { tokens: Math.round(values[Math.floor(values.length / 2)] / 100) * 100, samples: values.length };
+  }
+
   parse(input: AgentInput): UnifiedStatusInput {
     if (!isClaudeCodeInput(input)) {
       throw new Error("Invalid Claude Code input format");
@@ -133,11 +189,12 @@ export class ClaudeCodeAdapter implements StatusLineAdapter {
     // Cache
     const promptCache = input.prompt_cache ?? {};
     const cache: UnifiedCache = {
-      ttlSeconds: promptCache.ttl ?? null,
+      ttlSeconds: parseTtl(promptCache.ttl),
       warm: promptCache.warm ?? false,
       hitRatio: promptCache.hit_ratio ?? undefined,
       expiresAt: promptCache.expires_at ?? undefined,
       recacheTokensIfCold: promptCache.recache_tokens_if_cold ?? undefined,
+      requests: promptCache.requests ?? undefined,
     };
     
     // Rate limits
@@ -238,3 +295,11 @@ export class ClaudeCodeAdapter implements StatusLineAdapter {
 
 // Export singleton instance
 export const claudeCodeAdapter = new ClaudeCodeAdapter();
+/** TTL as seconds: accepts 3600, "3600", "1h", "5m". */
+function parseTtl(ttl: number | string | undefined): number | null {
+  if (typeof ttl === "number") return ttl;
+  if (typeof ttl !== "string") return null;
+  const m = ttl.trim().match(/^(\d+)\s*([smh]?)$/);
+  if (!m) return null;
+  return Number(m[1]) * (m[2] === "h" ? 3600 : m[2] === "m" ? 60 : 1);
+}

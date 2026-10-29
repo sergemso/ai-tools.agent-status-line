@@ -343,7 +343,7 @@ describe("renderStatusLine — edge cases", () => {
     });
     const plain = spansToPlainText(ansiToSpans(ansi));
     expect(plain).toContain("Claude Sonnet 4");
-    expect(plain).toContain("$0.42");
+    expect(plain).toContain("42¢");
     // context should NOT appear since it's not in the override
     expect(plain).not.toContain("▕"); // context bar border
   });
@@ -360,7 +360,7 @@ describe("fixture round-trips", () => {
       session: makeSession(),
       model: DEFAULT_MODEL_INFO,
       expectModel: "Claude Sonnet 4",
-      expectCost: "$0.42",
+      expectCost: "42¢",
       // 20000/200000 = 10% (renderStatusLine's context section uses Math.round)
       expectPct: "10%",
     },
@@ -371,7 +371,7 @@ describe("fixture round-trips", () => {
       }),
       model: DEFAULT_MODEL_INFO,
       expectModel: "Claude Sonnet 4",
-      expectCost: "$0.42",
+      expectCost: "42¢",
       // 200000/200000 = 100% (capped at 100)
       expectPct: "100%",
     },
@@ -400,7 +400,7 @@ describe("fixture round-trips", () => {
         limit: { context: 128_000, output: 4096 },
       },
       expectModel: "GPT-5",
-      expectCost: "$0.42",
+      expectCost: "42¢",
       // 20000/128000 = 15.625% → Math.round = 16% (renderStatusLine rounds)
       expectPct: "16%",
     },

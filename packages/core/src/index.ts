@@ -13,9 +13,10 @@
 // Types and models
 export * from "./model.js";
 export * from "./priority.js";
+export * from "./format.js";
 
 // Width calculation (Unicode-aware) — shared by layout + renderers
-export { visibleWidth } from "./width.js";
+export { visibleWidth, setEmojiWidth } from "./width.js";
 
 // Layout engine (Phase 3)
 export { buildLayout, estimateWidth } from "./layout.js";

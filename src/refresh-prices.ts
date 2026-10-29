@@ -74,6 +74,13 @@ export async function refreshPrices(claudeConfigDir: string, ttl: number = 3600)
       }
     }
 
+    // Keep only plausible entries (a Claude model name with finite prices); a changed page layout
+    // must never replace a good table with garbage.
+    for (const [name, v] of Object.entries(models)) {
+      if (!/^claude\s/i.test(name) || !Number.isFinite(v.in) || !Number.isFinite(v.out)) delete models[name];
+    }
+    if (Object.keys(models).length < 3) throw new Error("Parsed price table looks invalid");
+
     const table = { models };
     await savePrices(claudeConfigDir, table);
     await fs.unlink(failPath).catch(() => {});
@@ -108,26 +115,27 @@ function parsePricingPage(html: string): ParsedPriceRow[] {
 
     if (mode && line.trim().startsWith("|")) {
       rowCount++;
-      if (rowCount <= 2) continue; // Skip header and separator
+      // Main table: the detected line is the header row itself, so only the separator is left to skip
+      if (rowCount <= (mode === 1 ? 1 : 2)) continue;
 
       const cells = line.split("|").map((c) => c.trim()).filter((c) => c);
       if (cells.length < 3) continue;
 
       if (mode === 1) {
         // Main table: | Name | ... | Input | ... | Output |
-        const name = cells[1].replace(/ \(.*$/, "");
-        const inPrice = extractPrice(cells[2]);
-        const outPrice = extractPrice(cells[cells.length - 2]);
+        const name = cells[0].replace(/ \(.*$/, "");
+        const inPrice = extractPrice(cells[1]);
+        const outPrice = extractPrice(cells[cells.length - 1]);
 
         if (inPrice != null && outPrice != null) {
           rows.push({ type: "M", name, in: inPrice, out: outPrice });
         }
       } else if (mode === 2) {
         // Fast table: | Name | ... | Fast Input |
-        const fastPrice = extractPrice(cells[2]);
+        const fastPrice = extractPrice(cells[1]);
         if (fastPrice != null) {
           // Name might be "Opus 5 / Sonnet 5.5" - split by " / "
-          const names = cells[1].split(" / ").map((n) => n.trim());
+          const names = cells[0].split(" / ").map((n) => n.trim());
           for (const n of names) {
             rows.push({ type: "F", name: n, fast_in: fastPrice });
           }

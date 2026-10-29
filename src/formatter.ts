@@ -7,6 +7,7 @@ import { formatStatusLine as legacyFormatStatusLine } from "./formatter.legacy.j
 import type { FormatterOptions } from "./formatter.legacy.js";
 import type { UnifiedStatusInput } from "./adapters/index.js";
 import { loadPrices, matchModelPrice } from "./shared/prices.js";
+import { loadFactor } from "shared/multipliers.js";
 import {
   DEFAULT_BASE_MODEL,
   DEFAULT_FRESH_TOKENS,
@@ -20,17 +21,17 @@ import {
   type UserConfig,
   PriorityLevel as P,
 } from "@statusline/core";
-import { cliRenderer } from "@statusline/core";
+import { cliRenderer, parseFormats, FORMAT_LEVELS, unicodeOk, setEmojiWidth } from "@statusline/core";
 
 /**
  * Convert unified input to the format expected by core sections.
  * This adapts the existing UnifiedStatusInput to the section item generators.
  */
-function adaptInputForCore(
+async function adaptInputForCore(
   unified: UnifiedStatusInput,
   prices: any,
   options: FormatterOptions
-): any {
+): Promise<any> {
   const { model, context, usage, cost, cache, rateLimits, extensions } = unified;
 
   // Calculate overhead (ported from legacy formatter). Pass the
@@ -44,12 +45,14 @@ function adaptInputForCore(
   // not a hardcoded "Claude Sonnet 5.5".
   const baseModel = options.baseModel ?? DEFAULT_BASE_MODEL;
   const costMultiplier = matchModelPrice(prices, model.displayName, baseModel, extensions.fastMode === true);
+  const factor = await loadFactor(options.claudeConfigDir || "", model.displayName, model.capabilities.effortLevel);
+  const combined = costMultiplier !== null ? Math.round(costMultiplier * factor * 10) / 10 : factor !== 1 ? factor : null;
 
   return {
     model: {
       name: model.displayName,
       effort: model.capabilities.effortLevel,
-      costMultiplier: costMultiplier !== null && costMultiplier !== 1 ? costMultiplier : null,
+      costMultiplier: combined !== null && combined !== 1 ? combined : null,
       id: model.id,
     },
     context: {
@@ -118,15 +121,27 @@ function calculateOverhead(
   const wmul = cache.ttlSeconds === 3600 ? 2 : 1.25;
 
   const d = ctoks - freshTokens;
-  const oCall = (d * 0.1 * pin) / 1e6;
+  // Next request: re-read the whole context from cache (10%), or re-write it if cold
+  const oCall = (ctoks * (cache.warm ? 0.1 : wmul) * pin) / 1e6;
   const oCold = (d * wmul * pin) / 1e6;
-  const oBe = freshTokens * wmul / (d * 0.1);
   const oCompact = (ctoks * 0.1 * pin + summaryTokens * pout + (freshTokens + summaryTokens) * wmul * pin) / 1e6;
+  // Break-even in expected calls n: restart = oCompact + n*newCall, stay = oCall + (n-1)*readCost.
+  // Solve restart <= X*stay for the smallest n: redFrom (X=1, restart cheaper) and, with a 30%
+  // margin (X=1.3), the end of the green zone. Infinity = restarting never wins (new call >= stay call).
+  const readCost = (ctoks * 0.1 * pin) / 1e6;
+  const newCall = ((freshTokens + summaryTokens) * 0.1 * pin) / 1e6;
+  const firstN = (x: number): number => {
+    const den = x * readCost - newCall;
+    if (den <= 0) return Infinity;
+    return Math.max(1, Math.ceil((oCompact - x * (oCall - readCost)) / den));
+  };
+  const redFrom = firstN(1);
+  const yellowFrom = Math.min(firstN(1.3), redFrom);
 
   return {
     show: true,
     costPerCall: oCall,
-    breakEven: Math.ceil(oBe) < 1 ? 1 : Math.ceil(oBe),
+    breakEven: { yellowFrom, redFrom },
     compactCost: oCompact,
     isCold: !cache.warm,
     coldCost: oCold,
@@ -200,6 +215,8 @@ function buildUserConfig(options: FormatterOptions): UserConfig {
   if (options.resetCrit !== undefined) config.resetCrit = options.resetCrit;
   if (options.overheadWarn !== undefined) config.overheadWarn = options.overheadWarn;
   if (options.overheadCrit !== undefined) config.overheadCrit = options.overheadCrit;
+  if (options.format === "auto" || options.format === "glyph" || options.format === "short" || options.format === "words" || options.format === "ascii") config.format = options.format;
+  if (options.formats) config.formats = parseFormats(options.formats);
 
   return config;
 }
@@ -231,26 +248,35 @@ export async function formatStatusLine(
 
     // 1. Adapt input for core sections (pass options so baseModel /
     //    freshTokens / summaryTokens are honored)
-    const adaptedInput = adaptInputForCore(unified, prices, options);
+    const adaptedInput = await adaptInputForCore(unified, prices, options);
 
     // 2. Build user config
     const userConfig = buildUserConfig(options);
 
-    // 3. Create render context
-    const ctx: RenderContext = {
-      input: adaptedInput,
-      width: effectiveWidth - effectiveMargin,
-      target: "cli",
-      config: userConfig,
-      // Pass whether width is constrained (for layout engine)
-      widthConstrained: isWidthConstrained,
-    };
-
-    // 4. Get sections with config applied
-    const sections = getSections(userConfig, ctx);
-
-    // 5. Build layout
-    const layout = buildLayout(sections, ctx);
+    // 3-5. Create render context, sections and layout. In auto mode try the most readable text
+    // style first (words, then short, then glyph) and keep the first one in which everything fits;
+    // glyph is the last resort (items drop only after that). Without a detected width, use glyph.
+    const auto = !userConfig.format || userConfig.format === "auto";
+    setEmojiWidth(options.emojiWidth ?? 2);
+    const fallback = unicodeOk() ? "glyph" : "ascii";
+    const levels = auto && isWidthConstrained && unicodeOk() ? FORMAT_LEVELS : ([fallback] as typeof FORMAT_LEVELS);
+    let ctx!: RenderContext;
+    let sections!: ReturnType<typeof getSections>;
+    let layout!: ReturnType<typeof buildLayout>;
+    for (let i = 0; i < levels.length; i++) {
+      ctx = {
+        input: adaptedInput,
+        width: effectiveWidth - effectiveMargin,
+        target: "cli",
+        config: userConfig,
+        formatLevel: levels[i],
+        // Pass whether width is constrained (for layout engine)
+        widthConstrained: isWidthConstrained,
+      };
+      sections = getSections(userConfig, ctx);
+      layout = buildLayout(sections, ctx);
+      if (!layout.meta.overflow) break;
+    }
 
     // 6. Render with CLI renderer
     const output = cliRenderer.render(layout, ctx);
@@ -262,7 +288,7 @@ export async function formatStatusLine(
         const { promises: fs } = await import("fs");
         await fs.appendFile(
           dumpPath,
-          `\ncols=${effectiveWidth} margin=${effectiveMargin} overflow=${layout.meta.overflow} dropped=${layout.meta.droppedItems.length} visible=${output.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "").length}`
+          `\ncols=${effectiveWidth} margin=${effectiveMargin} format=${userConfig.format ?? "auto"}/${ctx.formatLevel} overflow=${layout.meta.overflow} dropped=${layout.meta.droppedItems.length} visible=${output.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "").length}\npriorities: ${sections.map((s) => `${s.id}=${s.priority}[${s.items.map((i) => `${i.id}=${i.priority}${layout.meta.droppedItems.some((d) => d.sectionId === s.id && d.itemId === i.id) ? "(dropped)" : ""}`).join(" ")}]`).join(" ")}`
         );
       } catch {
         // Ignore — diagnostics are best-effort.

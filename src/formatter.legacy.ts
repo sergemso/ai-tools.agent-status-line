@@ -429,6 +429,12 @@ function render(
 }
 
 export interface FormatterOptions {
+  /** "glyph" (default) or "words" */
+  format?: string;
+  /** Cells drawn for ⚡ / 🆕 (1 or 2); measured by the wizard */
+  emojiWidth?: number;
+  /** "section.item=words,section=glyph" overrides */
+  formats?: string;
   width?: number;
   margin?: number;
   sections?: string;

@@ -36,7 +36,7 @@ export async function detectCols(): Promise<number> {
 
       // Try to read stty size from the tty device
       try {
-        const sttyResult = await runCommand("stty", ["size", "-F", `/dev/${tty}`]);
+        const sttyResult = await runCommand("stty", [process.platform === "darwin" || process.platform.endsWith("bsd") ? "-f" : "-F", `/dev/${tty}`, "size"]);
         if (sttyResult.code === 0 && sttyResult.stdout) {
           const cols = parseInt(sttyResult.stdout.trim().split(" ")[1], 10);
           if (!isNaN(cols) && cols > 0) return cols;

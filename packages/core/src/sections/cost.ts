@@ -3,8 +3,9 @@
  * Priority: HIGH (70)
  */
 
-import type { Section, SectionItem, RenderContext } from "../model.js";
+import type { Section, SectionItem, RenderContext, Priority } from "../model.js";
 import { PriorityLevel as P } from "../priority.js";
+import { itemFormat, asciiCost } from "../format.js";
 
 /** Cost section ID */
 export const COST_SECTION_ID = "cost";
@@ -30,8 +31,14 @@ export function createCostSection(ctx: RenderContext): Section {
   if (cost.session !== undefined) {
     items.push({
       id: "session",
-      content: (ctx: RenderContext) => `${formatCost(ctx.input.cost.session)} \x1b[2msess\x1b[0m`,
-      priority: P.HIGH,
+      content: (ctx: RenderContext) =>
+        ({
+          words: `session ${formatCost(ctx.input.cost.session)}`,
+          short: `${formatCost(ctx.input.cost.session)} total`,
+          glyph: `${formatCost(ctx.input.cost.session)}Σ`,
+          ascii: `${asciiCost(formatCost(ctx.input.cost.session))} tot`,
+        })[itemFormat(ctx, "cost", "session")],
+      priority: 50 as Priority,
       minWidth: 8,
       idealWidth: 12,
       hints: { truncatable: false },
@@ -49,8 +56,8 @@ export function createCostSection(ctx: RenderContext): Section {
 
 /** Format cost as $X.XX (or $X.XXXX for sub-cent values). */
 function formatCost(cost: number): string {
-  // Sub-cent values get 4 decimals so they remain distinguishable
-  // (e.g. a per-call overhead of $0.0004 must not collapse to $0.00).
-  if (cost < 0.01) return `$${cost.toFixed(4)}`;
-  return `$${cost.toFixed(2)}`;
+  if (cost >= 9.95) return `$${Math.round(cost)}`;
+  if (cost >= 0.995) return `$${cost.toFixed(1).replace(/\.0$/, "")}`;
+  if (cost >= 0.005) return `${Math.round(cost * 100)}¢`;
+  return cost > 0 ? "<1¢" : "0¢";
 }

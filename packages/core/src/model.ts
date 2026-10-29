@@ -103,6 +103,8 @@ export type RenderTarget = "cli" | "vscode" | "neovim" | "opencode";
 
 // Context passed to render functions
 export interface RenderContext {
+  /** Text style the layout picked for this width (auto mode); see format.ts */
+  formatLevel?: "words" | "short" | "glyph" | "ascii";
   /** Unified input data from adapter */
   input: any;
   /** Available width in characters */
@@ -119,6 +121,10 @@ export interface RenderContext {
 
 // User configuration for sections and items
 export interface UserConfig {
+  /** Default item text style: "glyph" (compact symbols) or "words" (plain labels) */
+  format?: "auto" | "words" | "short" | "glyph" | "ascii";
+  /** Style overrides keyed "section.item" or "section" */
+  formats?: Record<string, "words" | "short" | "glyph" | "ascii">;
   /** Section-level overrides */
   sections?: Record<string, SectionConfig>;
   /** Item-level overrides */
@@ -181,6 +187,8 @@ export interface ThemeConfig {
 
 // Default configuration
 export const DEFAULT_CONFIG: Required<UserConfig> = {
+  format: "auto",
+  formats: {},
   sections: {},
   items: {},
   priorityThreshold: Priority.NONE,

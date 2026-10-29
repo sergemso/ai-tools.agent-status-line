@@ -45,6 +45,9 @@ interface Settings {
   resetCrit: number;
   width: number;
   margin: number;
+  format: string;
+  emojiWidth: number;
+  formats: string;
   dumpPath: string;
   freshTokens: number;
   summaryTokens: number;
@@ -91,6 +94,9 @@ async function loadSettings(claudeConfigDir: string): Promise<Settings> {
     resetCrit: num("RESET_CRIT", DEFAULT_RESET_CRIT),
     width: num("WIDTH", DEFAULT_WIDTH),
     margin: num("MARGIN", DEFAULT_MARGIN),
+    format: get("FORMAT", ""),
+    emojiWidth: num("EMOJI_WIDTH", 2),
+    formats: get("FORMATS", ""),
     dumpPath: get("DUMP", ""),
     freshTokens: num("FRESH_TOKENS", DEFAULT_FRESH_TOKENS),
     summaryTokens: num("SUMMARY_TOKENS", DEFAULT_SUMMARY_TOKENS),
@@ -149,8 +155,11 @@ export async function generateStatusLine(input: string): Promise<string> {
 
   // Use generalized formatter
   const line = await formatStatusLine(unifiedInput, {
-    width: settings.width,
+    width: settings.width > 0 ? settings.width : await detectCols(),
     margin: settings.margin,
+    format: settings.format,
+    emojiWidth: settings.emojiWidth,
+    formats: settings.formats,
     sections,
     resets: settings.resets,
     contextWarn: settings.contextWarn,
