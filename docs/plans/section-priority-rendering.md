@@ -187,7 +187,7 @@ function applyConfig(sections: Section[], config: UserConfig): Section[] {
 
 ## Phase 6: CLI Integration
 
-### 6.1 Refactor `src/formatter.ts` `[ ]`
+### 6.1 Refactor `src/formatter.ts` `[~]`
 - Replace current formatting with `buildLayout + cliRenderer`
 - Maintain backward-compatible output for existing tests
 
@@ -200,11 +200,13 @@ function applyConfig(sections: Section[], config: UserConfig): Section[] {
 - Updated `src/index.ts`
 - All existing tests pass (byte-for-byte for Claude Code fixtures)
 
+> **Note**: Phase 6 requires careful backward compatibility. The legacy formatter has complex logic for context bars, overhead calculation, rate limit rendering, etc. that needs to be ported to the new section/item model.
+
 ---
 
 ## Phase 7: Package Extraction (Core Library)
 
-### 7.1 Create `@statusline/core` Package `[ ]`
+### 7.1 Create `@statusline/core` Package `[x]`
 ```
 packages/
 ├── core/                    # NEW: Pure TS, zero deps
@@ -215,6 +217,7 @@ packages/
 │   │   ├── layout.ts
 │   │   ├── renderer.ts
 │   │   ├── renderers/
+│   │   ├── colors.ts
 │   │   └── config.ts
 │   ├── package.json
 │   └── tsconfig.json
@@ -233,7 +236,7 @@ packages/
 
 ## Phase 8: Test Coverage
 
-### 8.1 Unit Tests `[ ]`
+### 8.1 Unit Tests `[x]`
 | Module | Coverage Target |
 |--------|-----------------|
 | `layout.ts` | 100% - all shrink scenarios |
