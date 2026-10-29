@@ -2,7 +2,7 @@
  * Priority constants and helper functions for section-priority-based rendering.
  */
 
-import { Priority } from "./model.js";
+import type { Priority } from "./model.js";
 
 /**
  * All valid priority values in ascending order.
@@ -27,6 +27,15 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
   90: "CRITICAL-",
   100: "CRITICAL",
 };
+
+/** Priority level constants (namespace) */
+export const PriorityLevel = {
+  NONE: 0 as Priority,
+  LOW: 10 as Priority,
+  MEDIUM: 30 as Priority,
+  HIGH: 70 as Priority,
+  CRITICAL: 100 as Priority,
+} as const;
 
 /**
  * Get the label for a priority value.

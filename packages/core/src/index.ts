@@ -4,6 +4,7 @@
  * This package provides:
  * - Type definitions for sections, items, and priorities
  * - Priority constants and helpers
+ * - Built-in sections for common status line elements
  */
 
 // Types and models
@@ -14,7 +15,7 @@ export * from "./priority.js";
 // export { buildLayout, estimateWidth } from "./layout.js";
 
 // Sections (Phase 2)
-// export * from "./sections/index.js";
+export * from "./sections/index.js";
 
 // Renderers (Phase 4)
 // export * from "./renderers/index.js";

@@ -46,7 +46,7 @@ interface RenderContext { input, width, target, config }
 
 ## Phase 2: Built-in Sections
 
-### 2.1 Section Definitions `[ ]`
+### 2.1 Section Definitions `[x]`
 Each section in `packages/core/src/sections/`:
 | Section | Priority | Items (priority) |
 |---------|----------|------------------|
@@ -60,11 +60,11 @@ Each section in `packages/core/src/sections/`:
 | `worktree` | LOW | name(LOW) |
 | `cursor-extensions` | LOW | maxMode(MEDIUM), paramSummary(LOW), autorun(LOW) |
 
-### 2.2 Section Registry `[ ]`
+### 2.2 Section Registry `[x]`
 ```typescript
 // packages/core/src/sections/index.ts
 export const DEFAULT_SECTIONS: Section[] = [modelSection, contextSection, ...];
-export function getSections(config: UserConfig): Section[]; // Applies user overrides
+export function getSections(config: UserConfig, ctx: RenderContext): Section[]; // Applies user overrides
 ```
 
 ### 2.3 Deliverables
