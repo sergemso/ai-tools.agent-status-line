@@ -109,37 +109,42 @@ export function buildLayout(sections: Section[], ctx: RenderContext): SectionLay
 
 ## Phase 4: Renderer Interface & Implementations
 
-### 4.1 Renderer Interface `[ ]`
+### 4.1 Renderer Interface `[x]`
 ```typescript
 // packages/core/src/renderer.ts
-interface Renderer<TOutput> {
+interface Renderer<TOutput, TItemOutput = TOutput> {
   readonly target: RenderTarget;
   render(layout: SectionLayout, ctx: RenderContext): TOutput;
   measureItem(item: SectionItem, ctx: RenderContext): number;
-  renderItem(item: SectionItem, ctx: RenderContext): TOutput;
-  join(items: TOutput[], separator: TOutput): TOutput;
+  renderItem(item: SectionItem, ctx: RenderContext): TItemOutput;
+  join(items: TItemOutput[], separator: TItemOutput): TOutput;
 }
 ```
 
-### 4.2 CLI Renderer (ANSI) `[ ]`
+### 4.2 CLI Renderer (ANSI) `[x]`
 - `packages/core/src/renderers/cli.ts`
 - Colorize using `colors.ts` scheme
 - Separator: ` \u001b[2m|\u001b[0m ` (dim pipe)
 
-### 4.3 VS Code Renderer `[ ]`
+### 4.3 VS Code Renderer `[x]`
 - `packages/core/src/renderers/vscode.ts`
 - Returns `vscode.StatusBarItem` array
 - No ANSI - uses VS Code theming
 
-### 4.4 Neovim Renderer `[ ]`
+### 4.4 Neovim Renderer `[x]`
 - `packages/core/src/renderers/neovim.ts`
 - Returns lualine-compatible component table
 - Lua-compatible output
 
-### 4.5 Deliverables
+### 4.5 OpenCode Renderer `[x]`
+- `packages/core/src/renderers/opencode.ts`
+- Returns OpenCode component array
+
+### 4.6 Deliverables
 - `packages/core/src/renderer.ts` - Interface
 - `packages/core/src/renderers/*.ts` - Implementations
 - `packages/core/src/renderers/index.ts` - Factory `getRenderer(target)`
+- `packages/core/src/colors.ts` - CLI color scheme
 
 ---
 

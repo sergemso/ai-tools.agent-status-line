@@ -6,6 +6,7 @@
  * - Priority constants and helpers
  * - Built-in sections for common status line elements
  * - Layout engine with priority-based shrinking
+ * - Renderer interface and implementations (CLI, VS Code, Neovim, OpenCode)
  */
 
 // Types and models
@@ -19,7 +20,9 @@ export { buildLayout, estimateWidth } from "./layout.js";
 export * from "./sections/index.js";
 
 // Renderers (Phase 4)
-// export * from "./renderers/index.js";
+export * from "./renderers/index.js";
+// export * from "./renderer.js"; // getRenderer is re-exported from renderers/index
+export * from "./colors.js";
 
 // Configuration (Phase 5)
 // export { applyConfig, DEFAULT_CONFIG } from "./config.js";
