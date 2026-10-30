@@ -1,6 +1,6 @@
 {
   "name": "@statusline/opencode-plugin",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "OpenCode TUI plugin rendering a @statusline/core status line",
   "type": "module",
   "main": "dist/index.js",

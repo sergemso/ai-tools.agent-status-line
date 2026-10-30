@@ -40,8 +40,8 @@ export interface RenderStatusLineOptions {
   readonly sections?: string | null;
 }
 
-/** Default sections for OpenCode (no cache/resets/overhead — data unavailable). */
-const DEFAULT_OPENCODE_SECTIONS = "model,context,cost,tokens";
+/** Default sections for OpenCode (no cache/overhead — data unavailable). */
+const DEFAULT_OPENCODE_SECTIONS = "model,context,cost,tokens,resets";
 
 /**
  * Render a CoreRenderInput into an ANSI status-line string.
