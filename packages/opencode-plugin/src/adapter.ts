@@ -8,9 +8,12 @@
  * OpenCode exposes session cost, token usage, and model metadata via its
  * plugin context. Notably, it does NOT expose:
  *   - prompt cache TTL / warm / expiry / hit-ratio (no cache section)
- *   - rate-limit windows (no resets section)
  *   - recache tokens (no overhead section)
  *   - vim mode (no vim section)
+ *
+ * Rate-limit windows are not part of the plugin data API either, but for
+ * providers with a known usage endpoint (see ./quota.ts) the TUI plugin
+ * fetches quota windows itself and passes them via `options.rateLimits`.
  *
  * What we DO render: model name, context usage bar, token count, session
  * cost, and the VCS branch as the worktree.
@@ -23,6 +26,7 @@ import type {
   TokenUsageInfo,
   VcsInfo,
 } from "./types.js";
+import type { QuotaWindow } from "./quota.js";
 
 /**
  * The input shape consumed by `@statusline/core` sections.
@@ -48,7 +52,7 @@ export interface CoreRenderInput {
     readonly total: number;
   };
   readonly cache: null;
-  readonly rateLimits: readonly never[];
+  readonly rateLimits: readonly QuotaWindow[];
   readonly overhead: { readonly show: false };
   readonly usage: {
     readonly totalTokens: number;
@@ -78,6 +82,12 @@ export interface AdaptOptions {
    * Falls back to `session.tokens` when omitted.
    */
   readonly windowTokens?: TokenUsageInfo | undefined;
+  /**
+   * Provider quota windows (see ./quota.ts). Empty by default: OpenCode
+   * does not expose rate limits, so the resets section only renders when
+   * the plugin fetched quota data for the active provider.
+   */
+  readonly rateLimits?: readonly QuotaWindow[] | undefined;
 }
 
 /**
@@ -123,7 +133,7 @@ export function adaptSession(
     },
     // OpenCode does not expose prompt-cache lifecycle data.
     cache: null,
-    rateLimits: [],
+    rateLimits: options.rateLimits ?? [],
     overhead: { show: false },
     usage: {
       totalTokens: sumUsageTokens(session.tokens),

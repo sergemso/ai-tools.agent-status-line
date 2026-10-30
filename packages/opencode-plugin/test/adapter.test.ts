@@ -119,9 +119,21 @@ describe("adaptSession", () => {
     expect(result.cache).toBeNull();
   });
 
-  it("sets rateLimits to empty (opencode does not expose rate-limit windows)", () => {
+  it("sets rateLimits to empty by default (no quota windows passed)", () => {
     const result = adaptSession(makeSession(), { resolveModel: () => MODEL_INFO });
     expect(result.rateLimits).toEqual([]);
+  });
+
+  it("passes quota windows through as rateLimits", () => {
+    const windows = [
+      { window: "1d", limit: 2000, remaining: 1941, resetsAt: Math.floor(1793401862631 / 1000) },
+      { window: "7d", limit: 10000, remaining: 9941, resetsAt: Math.floor(1793988432998 / 1000) },
+    ];
+    const result = adaptSession(makeSession(), {
+      resolveModel: () => MODEL_INFO,
+      rateLimits: windows,
+    });
+    expect(result.rateLimits).toEqual(windows);
   });
 
   it("sets overhead.show to false (no recache tokens)", () => {

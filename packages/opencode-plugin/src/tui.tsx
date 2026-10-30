@@ -22,6 +22,12 @@ import { Plugin } from "@opencode/plugin/tui";
 import { adaptSession } from "./adapter.js";
 import { renderStatusLine } from "./render.js";
 import { ansiToSpans, type Span } from "./ansi.js";
+import {
+  fetchProviderQuota,
+  pickCredentialKey,
+  supportsProviderQuota,
+  type QuotaWindow,
+} from "./quota.js";
 import type { ModelInfo, ModelRef, TokenUsageInfo } from "./types.js";
 
 /** Options accepted through `plugins: [{ package, options }]` in OpenCode. */
@@ -87,6 +93,48 @@ export default Plugin.define({
 
     ensureModels(locationOf());
 
+    // Rate-limit resets. OpenCode has no rate_limits payload, so quota
+    // windows are fetched from the active provider's usage endpoint with
+    // the key OpenCode saved for it. Cached windows keep the section up
+    // through transient failures; a 5-minute poll keeps it fresh.
+    const [quota, setQuota] = createSignal<readonly QuotaWindow[] | undefined>(
+      undefined,
+    );
+    const QUOTA_POLL_MS = 5 * 60 * 1000;
+    let quotaProvider: string | undefined;
+    let latestProvider: string | undefined;
+    let quotaBusy = false;
+    let quotaFetchedAt = 0;
+    const refreshQuota = (providerID: string | undefined) => {
+      if (!providerID || !supportsProviderQuota(providerID)) return;
+      if (quotaBusy || Date.now() - quotaFetchedAt < QUOTA_POLL_MS / 2) return;
+      if (providerID === quotaProvider && quota()) return;
+      quotaProvider = providerID;
+      quotaBusy = true;
+      void (async () => {
+        try {
+          const key = await context.client
+            .credential.list()
+            .then((list) => pickCredentialKey(list, providerID));
+          const windows =
+            key !== undefined
+              ? await fetchProviderQuota(providerID, key)
+              : undefined;
+          if (windows) quotaFetchedAt = Date.now();
+          setQuota(windows);
+        } catch {
+          // Keep whatever we had; the section is omitted on hard failure.
+        } finally {
+          quotaBusy = false;
+          schedule();
+        }
+      })();
+    };
+    const quotaTimer = setInterval(() => {
+      quotaFetchedAt = 0;
+      quotaProvider = undefined;
+      refreshQuota(latestProvider);
+    }, QUOTA_POLL_MS);
     const StatusLine = (props: { sessionID?: string }) => {
       // The width the host actually dealt this slot. It is known after the
       // first layout pass; until then fall back to the terminal width.
@@ -112,11 +160,16 @@ export default Plugin.define({
         const modelInfo = modelRef ? findModel(models, modelRef) : undefined;
         const vcs = context.data.location.vcs.info(location);
 
+        const providerID = modelRef?.providerID ?? session.model?.providerID;
+        if (providerID) latestProvider = providerID;
+        refreshQuota(providerID);
+
         const input = adaptSession(session, {
           resolveModel: () => modelInfo,
           modelRef,
           windowTokens: window?.tokens,
           vcs,
+          rateLimits: quota(),
         });
 
         const width = Math.max(20, fitted() ?? context.renderer.width ?? 120);
@@ -134,9 +187,16 @@ export default Plugin.define({
           {(spans: () => Span[]) => (
             <box
               flexDirection="row"
+              flexBasis={0}
+              flexGrow={1}
+              flexShrink={1}
               minWidth={0}
               onSizeChange={function (this: { width: number }) {
                 const width = this.width;
+                // Zero is the pre-layout measurement. Feeding it back would
+                // lock the line to the 20-column floor instead of letting it
+                // grow to the width the host actually dealt this slot.
+                if (width <= 0) return;
                 // Deferred: this runs inside layout; writing the signal
                 // directly would re-enter the render that caused it.
                 queueMicrotask(() => setFitted(width));
@@ -170,6 +230,7 @@ export default Plugin.define({
       release();
       stopEvents();
       if (timer) clearTimeout(timer);
+      clearInterval(quotaTimer);
     };
   },
 });
