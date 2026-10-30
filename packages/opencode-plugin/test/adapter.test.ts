@@ -137,6 +137,14 @@ describe("adaptSession", () => {
     expect(result.worktree).toEqual({ name: "feature/auth" });
   });
 
+  it("reads the v2 VCS branch object", () => {
+    const result = adaptSession(makeSession(), {
+      resolveModel: () => MODEL_INFO,
+      vcs: { provider: "git", branch: { current: "main", default: "main" } },
+    });
+    expect(result.worktree).toEqual({ name: "main" });
+  });
+
   it("sets worktree to null when VCS is absent", () => {
     const result = adaptSession(makeSession(), {
       resolveModel: () => MODEL_INFO,

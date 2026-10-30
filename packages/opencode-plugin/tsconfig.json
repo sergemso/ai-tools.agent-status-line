@@ -15,10 +15,11 @@
     "sourceMap": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsx": "react-jsx",
+    "jsxImportSource": "@opentui/solid",
+    "types": ["node"],
     "noEmit": false
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "test", "src/plugin.tsx"]
+  "exclude": ["node_modules", "dist", "test"]
 }

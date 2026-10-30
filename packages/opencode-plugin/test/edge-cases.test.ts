@@ -361,8 +361,8 @@ describe("fixture round-trips", () => {
       model: DEFAULT_MODEL_INFO,
       expectModel: "Claude Sonnet 4",
       expectCost: "42¢",
-      // 20000/200000 = 10% (renderStatusLine's context section uses Math.round)
-      expectPct: "10%",
+      // (15000+5000+8000+2000)/200000 = 15%
+      expectPct: "15%",
     },
     {
       name: "high-context",
@@ -384,7 +384,7 @@ describe("fixture round-trips", () => {
       // We assert the model still renders; cost is checked separately in the
       // edge-cases describe block.
       expectCost: null,
-      expectPct: "10%",
+      expectPct: "15%",
     },
     {
       name: "different-model",
@@ -401,8 +401,8 @@ describe("fixture round-trips", () => {
       },
       expectModel: "GPT-5",
       expectCost: "42¢",
-      // 20000/128000 = 15.625% → Math.round = 16% (renderStatusLine rounds)
-      expectPct: "16%",
+      // (15000+5000+8000+2000)/128000 = 23.4% → Math.round = 23%
+      expectPct: "23%",
     },
   ];
 

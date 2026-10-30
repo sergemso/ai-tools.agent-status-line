@@ -1,18 +1,20 @@
 /**
- * @statusline/opencode-plugin — OpenCode TUI plugin that renders a
- * @statusline/core status line into the prompt.footer.status slot.
+ * @statusline/opencode-plugin — OpenCode plugin package.
  *
- * See README.md for installation and usage.
+ * The TUI part lives in `./tui` and renders the status line. This entrypoint
+ * is the package's server part (a no-op) plus the pure, runtime-independent
+ * adapter/render helpers that are useful to tests and embedders.
  */
 
-// The TUI plugin entry (plugin.tsx) is excluded from the tsc build because
-// it uses JSX types provided by the OpenCode host (@opentui/solid) at
-// runtime. Import it directly from "./plugin.js" when running inside
-// OpenCode:
-//
-//   import { createStatusLinePlugin } from "@statusline/opencode-plugin/plugin";
-//
-// The pure-logic modules below are fully typed and unit-tested.
+import type { Plugin as PluginSdk } from "@opencode/plugin";
+
+/** Server part: this plugin only contributes TUI UI, so setup is a no-op. */
+const server: PluginSdk.Plugin = {
+  id: "statusline.opencode",
+  setup() {},
+};
+
+export default server;
 
 export { adaptSession } from "./adapter.js";
 export type { CoreRenderInput, AdaptOptions } from "./adapter.js";
@@ -27,6 +29,7 @@ export type {
   OpenCodePluginContext,
   PromptFooterInput,
   SessionInfo,
+  SessionMessageInfo,
   ModelInfo,
   ModelRef,
   TokenUsageInfo,

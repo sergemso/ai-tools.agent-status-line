@@ -10,11 +10,10 @@
  *   - prompt cache TTL / warm / expiry / hit-ratio (no cache section)
  *   - rate-limit windows (no resets section)
  *   - recache tokens (no overhead section)
- *   - vim mode / worktree (no vim/worktree sections)
+ *   - vim mode (no vim section)
  *
  * What we DO render: model name, context usage bar, token count, session
- * cost. This is the subset of the legacy status line that OpenCode's data
- * model supports.
+ * cost, and the VCS branch as the worktree.
  */
 
 import type {
@@ -64,11 +63,21 @@ export interface AdaptOptions {
   /**
    * Called to resolve a ModelRef (from the session) to a full ModelInfo
    * (which carries the context limit and display name). In the plugin
-   * this delegates to `data.model.list()`; in tests it can be stubbed.
+   * this delegates to `data.location.model.list()`; in tests it can be
+   * stubbed.
    */
   readonly resolveModel: (ref: ModelRef) => ModelInfo | undefined;
   /** Optional VCS info for the worktree section. */
   readonly vcs?: VcsInfo | undefined;
+  /** Override the model ref (e.g. from the latest assistant message). */
+  readonly modelRef?: ModelRef | undefined;
+  /**
+   * Token usage of the latest assistant message. OpenCode's session
+   * `tokens` field is cumulative across the whole conversation, so the
+   * context window must be read from the most recent request instead.
+   * Falls back to `session.tokens` when omitted.
+   */
+  readonly windowTokens?: TokenUsageInfo | undefined;
 }
 
 /**
@@ -80,19 +89,22 @@ export function adaptSession(
   session: SessionInfo,
   options: AdaptOptions,
 ): CoreRenderInput {
-  const ref = session.model;
+  const ref = options.modelRef ?? session.model;
   const modelInfo = ref ? options.resolveModel(ref) : undefined;
 
   const modelName = modelInfo?.name ?? ref?.id ?? "unknown";
   const modelId = modelInfo?.id ?? ref?.id ?? "unknown";
 
   // Context: opencode doesn't expose a pre-computed used_percentage, so we
-  // derive it from token totals vs the model's context limit.
-  const tokensUsed = sumTokens(session.tokens);
+  // derive it from the latest request's token totals vs the model's context
+  // limit. Session tokens are cumulative, so prefer the message snapshot.
+  const windowTokens = options.windowTokens ?? session.tokens;
+  const tokensUsed = sumContextTokens(windowTokens);
   const tokensTotal = modelInfo?.limit.context ?? 0;
   const percentage =
     tokensTotal > 0 ? Math.min(100, (tokensUsed / tokensTotal) * 100) : null;
 
+  const branch = branchName(options.vcs);
   return {
     model: {
       name: modelName,
@@ -114,20 +126,41 @@ export function adaptSession(
     rateLimits: [],
     overhead: { show: false },
     usage: {
-      totalTokens: tokensUsed,
+      totalTokens: sumUsageTokens(session.tokens),
       cacheTokens: undefined,
     },
     vim: null,
-    worktree: options.vcs?.branch ? { name: options.vcs.branch } : null,
+    worktree: branch ? { name: branch } : null,
     cursorExtensions: null,
   };
 }
 
-/** Sum input + output tokens (cache/reasoning excluded to match legacy semantics).
- *  Defensive against missing fields — OpenCode may emit partial token records. */
-function sumTokens(tokens: TokenUsageInfo | undefined | null): number {
+/**
+ * Everything the model reads back — the same sum OpenCode uses for its own
+ * context display: prompt, generated, reasoning, and both cache sides.
+ */
+function sumContextTokens(tokens: TokenUsageInfo | undefined | null): number {
+  if (!tokens) return 0;
+  return (
+    (tokens.input ?? 0) +
+    (tokens.output ?? 0) +
+    (tokens.reasoning ?? 0) +
+    (tokens.cache?.read ?? 0) +
+    (tokens.cache?.write ?? 0)
+  );
+}
+
+/** Cumulative session tokens: input + output, matching the legacy line. */
+function sumUsageTokens(tokens: TokenUsageInfo | undefined | null): number {
   if (!tokens) return 0;
   return (tokens.input ?? 0) + (tokens.output ?? 0);
+}
+
+/** The current branch name from either VCS shape. */
+function branchName(vcs: VcsInfo | undefined): string | undefined {
+  if (!vcs) return undefined;
+  if (typeof vcs.branch === "string") return vcs.branch || undefined;
+  return vcs.branch?.current || undefined;
 }
 
 /** Round to `digits` decimal places, returning null for null input. */
