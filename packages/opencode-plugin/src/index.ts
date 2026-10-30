@@ -6,7 +6,8 @@
  * useful to tests and embedders.
  */
 
-export { default } from "./tui.js";
+import tuiPlugin from "./tui.js";
+export default tuiPlugin;
 
 export { adaptSession } from "./adapter.js";
 export type { CoreRenderInput, AdaptOptions } from "./adapter.js";
