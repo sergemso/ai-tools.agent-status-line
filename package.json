@@ -1,6 +1,6 @@
 {
   "name": "claude-code-status-line",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Claude Code status line plugin - TypeScript rewrite",
   "type": "module",
   "main": "dist/index.js",
