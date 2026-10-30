@@ -1,6 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": [
-    "/home/ubuntu/projects/sergemso/claude-code-status-line/packages/opencode-plugin"
-  ]
+  "plugins": ["@statusline/opencode-plugin@1.0.10"]
 }

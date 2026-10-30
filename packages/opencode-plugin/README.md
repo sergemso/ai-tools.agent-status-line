@@ -71,7 +71,7 @@ This registers the package in `~/.config/opencode/opencode.json`:
 ```
 
 OpenCode loads the package's server part (a no-op) and its TUI part
-automatically. Pin a version with `@statusline/opencode-plugin@1.0.9` if
+automatically. Pin a version with `@statusline/opencode-plugin@1.0.10` if
 needed.
 
 ### 2. Local development
