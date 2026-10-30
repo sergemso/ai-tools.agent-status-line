@@ -1,20 +1,12 @@
 /**
  * @statusline/opencode-plugin — OpenCode plugin package.
  *
- * The TUI part lives in `./tui` and renders the status line. This entrypoint
- * is the package's server part (a no-op) plus the pure, runtime-independent
- * adapter/render helpers that are useful to tests and embedders.
+ * The default export is the TUI plugin (defined in ./tui) that OpenCode loads
+ * when the package is listed in `plugins`. The pure-logic modules below are
+ * useful to tests and embedders.
  */
 
-import type { Plugin as PluginSdk } from "@opencode/plugin";
-
-/** Server part: this plugin only contributes TUI UI, so setup is a no-op. */
-const server: PluginSdk.Plugin = {
-  id: "statusline.opencode",
-  setup() {},
-};
-
-export default server;
+export { default } from "./tui.js";
 
 export { adaptSession } from "./adapter.js";
 export type { CoreRenderInput, AdaptOptions } from "./adapter.js";
