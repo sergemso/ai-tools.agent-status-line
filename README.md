@@ -177,7 +177,7 @@ Three install paths per agent — pick what fits.
 |---|---|---|---|
 | **Claude Code** | ✅ `/plugin marketplace add` + `/plugin install` + `/statusline:setup` (recommended) | `curl -fsSL …/install-claude-code.sh \| bash` | git clone + `npm install` + `./bin/statusline install --configure` |
 | **Cursor** | — *(team/enterprise marketplace only; no public statusLine plugin registry)* | `curl -fsSL …/install-cursor.sh \| bash` | git clone + build + copy binary + add JSON to settings.json |
-| **OpenCode** (TUI) | ✅ `opencode plugin add @statusline/opencode-plugin` *(after npm publish)* | `curl -fsSL …/install-opencode.sh \| bash` | git clone + build plugin + add path to `opencode.json` |
+| **OpenCode** (TUI) | ✅ `opencode plugin add @statusline/opencode-plugin` | `curl -fsSL …/install-opencode.sh \| bash` | `opencode plugin add @statusline/opencode-plugin` |
 
 ### Claude Code — via plugin marketplace (recommended)
 
@@ -203,7 +203,7 @@ Builds the binary, copies it to `~/.claude/statusline/`, prints the JSON snippet
 curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-opencode.sh | bash
 ```
 
-If `@statusline/opencode-plugin` is published to npm, prints the one-line `plugins` entry for `opencode.json`. Otherwise clones the repo, builds the plugin, and prints the local path to register. Run `opencode` (TUI mode) after.
+Installs `@statusline/opencode-plugin` with `opencode plugin add`. If the package is not on npm yet, it clones the repo and builds the plugin for a local registry. Run `opencode` (TUI mode) after.
 
 **Prefer manual?** See [Manual setup](#manual-setup) below.
 
@@ -269,19 +269,19 @@ Then add to your Cursor `settings.json` (location varies by OS — see `scripts/
 }
 ```
 
-**OpenCode (TUI)** — build the plugin and register it:
+**OpenCode (TUI)** — install the published plugin:
 
 ```bash
-npm run build --workspace=@statusline/opencode-plugin
+opencode plugin add @statusline/opencode-plugin
 ```
 
-Then add to `~/.config/opencode/opencode.json`:
+This adds the package to `~/.config/opencode/opencode.json`:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
   "plugins": [
-    "/absolute/path/to/claude-code-status-line/packages/opencode-plugin/dist/index.js"
+    "@statusline/opencode-plugin"
   ]
 }
 ```

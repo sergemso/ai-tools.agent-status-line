@@ -10,9 +10,15 @@ OpenCode v2 does **not** expose an external-command status-line contract
 customisation is done via **in-process TUI plugins** that claim a slot in
 the footer render tree.
 
-This package is such a plugin. It:
+This package is such a plugin. It has two parts:
 
-1. Runs inside the OpenCode TUI process (loaded from `.opencode/plugins/`).
+- `.` (`dist/index.js`) — a no-op **server** plugin. OpenCode loads this in
+  the server process, where there is no TUI context.
+- `./tui` (`dist/tui.js`) — the **TUI** plugin that renders the status line.
+
+The TUI part:
+
+1. Runs inside the OpenCode TUI process.
 2. Subscribes to session / model / VCS data via `@opencode/plugin/tui`.
 3. Adapts that data into a `CoreRenderInput` (the shape `@statusline/core`
    sections expect).
@@ -21,6 +27,10 @@ This package is such a plugin. It:
 5. Converts the ANSI string into coloured `<text>` spans (because
    `@opentui/solid` does not interpret raw ANSI) and renders them into the
    `prompt.footer.status` slot.
+
+Keeping the two parts separate is required: if the TUI entry is exposed as
+the package's `.` entry, OpenCode runs it in the server process and setup
+fails with `context.data.listen is undefined`.
 
 ### What is rendered
 
@@ -43,22 +53,13 @@ Sections that depend on data OpenCode does not expose are disabled:
 
 ## Installation
 
-### 1. Build the plugin
-
-From the repository root:
+### 1. Install from npm
 
 ```bash
-npm install
-npm run build:core        # build @statusline/core
-npm run build             # build the opencode plugin (packages/opencode-plugin)
+opencode plugin add @statusline/opencode-plugin
 ```
 
-This produces `packages/opencode-plugin/dist/index.js`.
-
-### 2. Register the plugin with OpenCode
-
-Create or edit `~/.config/opencode/opencode.json` (global) or
-`opencode.json` in your project:
+This registers the package in `~/.config/opencode/opencode.json`:
 
 ```jsonc
 {
@@ -69,24 +70,27 @@ Create or edit `~/.config/opencode/opencode.json` (global) or
 }
 ```
 
-Or, for a local development checkout, point directly at the built file:
+OpenCode loads the package's server part (a no-op) and its TUI part
+automatically. Pin a version with `@statusline/opencode-plugin@1.0.9` if
+needed.
 
-```jsonc
-{
-  "plugins": [
-    "/absolute/path/to/claude-code-status-line/packages/opencode-plugin/dist/index.js"
-  ]
-}
-```
+### 2. Local development
 
-OpenCode loads plugins from `.opencode/plugins/` as well — you can symlink
-the built package there:
+Build the package, then install it with npm or link it into the OpenCode
+plugin cache. OpenCode 2.1.4 does not load arbitrary local paths from the
+`plugins` array, so use a published version (or a local npm registry) when
+testing the install flow.
+
+From the repository root:
 
 ```bash
-mkdir -p ~/.config/opencode/plugins
-ln -s /path/to/claude-code-status-line/packages/opencode-plugin \
-  ~/.config/opencode/plugins/statusline
+npm install
+npm run build:core        # build @statusline/core
+npm run build --workspace=@statusline/opencode-plugin
 ```
+
+This produces `packages/opencode-plugin/dist/index.js` (server part) and
+`packages/opencode-plugin/dist/tui.js` (TUI part).
 
 ### 3. Start the OpenCode TUI
 
@@ -114,18 +118,17 @@ in-process TUI plugin from this package does not apply.
 ## Configuration
 
 The plugin uses sensible defaults. To override the enabled sections, pass
-options when creating the plugin:
+options when registering the package:
 
-```ts
-// .opencode/plugins/statusline/index.ts
-import { define } from "@opencode/plugin/tui";
-import { createStatusLinePlugin } from "@statusline/opencode-plugin";
-
-export default define(
-  createStatusLinePlugin({
-    sections: "model,context,cost",  // legacy comma-separated names
-  }),
-);
+```jsonc
+{
+  "plugins": [
+    {
+      "package": "@statusline/opencode-plugin",
+      "options": { "sections": "model,context,cost" }
+    }
+  ]
+}
 ```
 
 Available legacy section names: `model`, `context`, `cost`, `tokens`,
@@ -155,7 +158,7 @@ OpenCode TUI
   │
   │  (in-process plugin load)
   ▼
-packages/opencode-plugin/src/plugin.tsx   ← define({ id, setup })
+packages/opencode-plugin/src/tui.tsx      ← define({ id, setup })
   │
   │  context.data.session.get(id)
   │  context.data.model.list()

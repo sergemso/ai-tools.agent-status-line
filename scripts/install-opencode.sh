@@ -12,11 +12,12 @@
 #        opencode.json and auto-installs the package via Bun at startup.
 #
 #   B. Local build (fallback, when not yet published):
-#        Clone the repo, build the plugin, point opencode.json at the
-#        built dist/index.js.
+#        Clone the repo and build the plugin. OpenCode 2.1.4 does not
+#        load arbitrary local paths from the plugins array, so the
+#        package must still be installed from a registry.
 #
 # This script tries path A first; if the package isn't on npm, falls back
-# to path B and prints the local path to add to opencode.json.
+# to path B and prints how to install the built package.
 #
 # IMPORTANT: This only works in OpenCode TUI mode (`opencode`).
 # In ACP mode (`opencode acp`) the editor renders its own UI — the
@@ -36,16 +37,21 @@ echo "→ Installing $PLUGIN_NAME for OpenCode"
 if npm view "$PLUGIN_NAME" version >/dev/null 2>&1; then
   echo "✓ $PLUGIN_NAME is published on npm."
   echo ""
-  echo "→ Add this to $OPENCODE_CONFIG_DIR/opencode.json:"
+  if command -v opencode >/dev/null 2>&1; then
+    echo "→ Installing the plugin..."
+    opencode plugin add "$PLUGIN_NAME"
+  else
+    echo "→ Add this to $OPENCODE_CONFIG_DIR/opencode.json:"
+    echo ""
+    echo '  {'
+    echo '    "$schema": "https://opencode.ai/config.json",'
+    echo '    "plugins": ['
+    echo "      \"$PLUGIN_NAME\""
+    echo '    ]'
+    echo '  }'
+  fi
   echo ""
-  echo '  {'
-  echo '    "$schema": "https://opencode.ai/config.json",'
-  echo '    "plugins": ['
-  echo "      \"$PLUGIN_NAME\""
-  echo '    ]'
-  echo '  }'
-  echo ""
-  echo "OpenCode auto-installs npm plugins via Bun at startup — no manual build needed."
+  echo "OpenCode auto-installs npm plugins at startup — no manual build needed."
   echo "Run \`opencode\` (TUI mode) and the status line appears in the footer."
   exit 0
 fi
@@ -76,19 +82,16 @@ npm run build --workspace=@statusline/opencode-plugin --silent 2>&1 | tail -2 ||
   exit 1
 }
 
-PLUGIN_DIST="$INSTALL_DIR/packages/opencode-plugin/dist/index.js"
+PLUGIN_DIR="$INSTALL_DIR/packages/opencode-plugin"
 
 echo ""
-echo "✓ Plugin built at: $PLUGIN_DIST"
+echo "✓ Plugin built at: $PLUGIN_DIR"
 echo ""
-echo "→ Add this to $OPENCODE_CONFIG_DIR/opencode.json:"
+echo "→ Publish the package or install it from a local registry, then run:"
 echo ""
-echo '  {'
-echo '    "$schema": "https://opencode.ai/config.json",'
-echo '    "plugins": ['
-echo "      \"$PLUGIN_DIST\""
-echo '    ]'
-echo '  }'
+echo "    opencode plugin add @statusline/opencode-plugin"
+echo ""
+echo "OpenCode 2.1.4 does not load arbitrary local paths from the plugins array."
 echo ""
 echo "Run \`opencode\` (TUI mode) — the status line appears in the footer."
 echo ""
