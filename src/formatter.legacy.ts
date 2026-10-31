@@ -435,6 +435,8 @@ export interface FormatterOptions {
   emojiWidth?: number;
   /** "section.item=words,section=glyph" overrides */
   formats?: string;
+  /** Text drawn between groups, e.g. "|" or "·" (padded with a space each side); default "|" */
+  separator?: string;
   width?: number;
   margin?: number;
   sections?: string;

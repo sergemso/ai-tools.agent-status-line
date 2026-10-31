@@ -35,7 +35,7 @@ export function createCostSection(ctx: RenderContext): Section {
         ({
           words: `session ${formatCost(ctx.input.cost.session)}`,
           short: `${formatCost(ctx.input.cost.session)} total`,
-          glyph: `${formatCost(ctx.input.cost.session)}Σ`,
+          glyph: `Σ ${formatCost(ctx.input.cost.session)}`,
           ascii: `${asciiCost(formatCost(ctx.input.cost.session))} tot`,
         })[itemFormat(ctx, "cost", "session")],
       priority: 50 as Priority,

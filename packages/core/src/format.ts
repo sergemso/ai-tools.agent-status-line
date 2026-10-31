@@ -1,6 +1,6 @@
 /**
  * Per-item text style. Three levels, most readable first:
- *   words  "next call 3.6¢"   short  "next 3.6¢"   glyph  "⚡3.6¢"   ascii  "nx 3.6c" (plain ASCII, never auto-picked by width)
+ *   words  "next call 3.6¢"   short  "next 3.6¢"   glyph  "⚡ 3.6¢"   ascii  "nx 3.6c" (plain ASCII, never auto-picked by width)
  * Resolution: formats["section.item"] > formats["section"] > format (unless "auto")
  * > the level the layout picked for the current width (ctx.formatLevel) > "glyph".
  */

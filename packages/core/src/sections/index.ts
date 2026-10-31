@@ -171,5 +171,7 @@ function regroup(sections: Section[]): Section[] {
     .map((s) => ({ ...s, priority: PriorityLevel.MEDIUM, items: s.items.map((i) => ({ ...i, id: `${s.id}.${i.id}` })).filter((i) => !claimed.has(i.id)) }))
     .filter((s) => s.items.length > 0)
     .map((s) => ({ ...s, items: s.items.map((i) => ({ ...i, id: i.id.slice(s.id.length + 1) })) }));
-  return [...out, ...rest];
+  // Each rate-limit window is its own group, so the section separator sits between windows
+  const split = rest.flatMap((s) => (s.id === "rate-limits" ? s.items.map((i) => ({ ...s, id: `${s.id}.${i.id}`, items: [i] })) : [s]));
+  return [...out, ...split];
 }

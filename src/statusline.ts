@@ -46,6 +46,7 @@ interface Settings {
   width: number;
   margin: number;
   format: string;
+  separator: string;
   emojiWidth: number;
   formats: string;
   dumpPath: string;
@@ -95,6 +96,7 @@ async function loadSettings(claudeConfigDir: string): Promise<Settings> {
     width: num("WIDTH", DEFAULT_WIDTH),
     margin: num("MARGIN", DEFAULT_MARGIN),
     format: get("FORMAT", ""),
+    separator: get("SEPARATOR", ""),
     emojiWidth: num("EMOJI_WIDTH", 2),
     formats: get("FORMATS", ""),
     dumpPath: get("DUMP", ""),
@@ -158,6 +160,7 @@ export async function generateStatusLine(input: string): Promise<string> {
     width: settings.width > 0 ? settings.width : await detectCols(),
     margin: settings.margin,
     format: settings.format,
+    separator: settings.separator,
     emojiWidth: settings.emojiWidth,
     formats: settings.formats,
     sections,

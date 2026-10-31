@@ -8,7 +8,7 @@
 import type { Section, SectionItem, SectionLayout, RenderContext } from "../model.js";
 import type { Renderer } from "../renderer.js";
 import { style } from "../colors.js";
-import { resolveItemContent } from "../layout.js";
+import { resolveItemContent, DEFAULT_SECTION_SEPARATOR } from "../layout.js";
 import { visibleWidth } from "../width.js";
 
 /** CLI Renderer - outputs ANSI-colored string */
@@ -43,8 +43,8 @@ export class CliRenderer implements Renderer<string, string> {
   }
   
   protected getSectionSeparator(ctx: RenderContext): string {
-    // Dim pipe separator with spaces (matches legacy)
-    return style.dim(" | ");
+    // Dim separator; default is the legacy pipe with spaces, user-configurable via sectionSeparator
+    return style.dim(ctx.config?.sectionSeparator ?? DEFAULT_SECTION_SEPARATOR);
   }
   
   /**
