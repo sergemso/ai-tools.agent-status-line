@@ -80,7 +80,7 @@ New to the symbols? Read [In 30 seconds](#in-30-seconds) next.
 npx @statusline/claude-plugin install
 ```
 
-Copies the prebuilt binary to `~/.claude/statusline/` (no git, no build) and prints the JSON snippet to add to Cursor's `settings.json` (`~/.config/Cursor/User/settings.json` on Linux, `~/Library/Application Support/Cursor/User/settings.json` on macOS, `%APPDATA%\Cursor\User\settings.json` on Windows). Restart Cursor after. Cursor has no public plugin registry for status lines, so there is no marketplace route. (`curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash` does the same and also prints the settings locations.)
+Copies the prebuilt binary to `~/.claude/statusline/` (no git, no build) and prints the JSON snippet to add. For the Cursor Agent CLI that is `~/.cursor/cli-config.json` (verified); for the desktop app it is Cursor's `settings.json` (`~/.config/Cursor/User/settings.json` on Linux, `~/Library/Application Support/Cursor/User/settings.json` on macOS, `%APPDATA%\Cursor\User\settings.json` on Windows; not verified). Restart Cursor after. Cursor has no public plugin registry for status lines, so there is no marketplace route. (`curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash` does the same and also prints the settings locations.)
 
 ### OpenCode (TUI)
 

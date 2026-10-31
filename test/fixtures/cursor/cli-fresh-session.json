@@ -1,0 +1,13 @@
+{
+  "session_id": "30181b2a-8365-4913-9d6a-09375e7d6f17",
+  "transcript_path": "/home/user/.cursor/projects/proj/agent-transcripts/30181b2a/30181b2a.jsonl",
+  "render_width_chars": 136,
+  "cwd": "/home/user/proj",
+  "autorun": false,
+  "model": { "id": "default", "display_name": "Auto" },
+  "workspace": { "current_dir": "/home/user/proj", "project_dir": "/home/user/.cursor/projects/proj", "added_dirs": [] },
+  "version": "2026.10.22-27dcf5f",
+  "output_style": { "name": "compact" },
+  "context_window": { "total_input_tokens": null, "total_output_tokens": null, "context_window_size": null, "used_percentage": null, "remaining_percentage": null, "current_usage": null },
+  "session_name": "New Agent"
+}

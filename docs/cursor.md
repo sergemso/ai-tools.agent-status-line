@@ -1,6 +1,6 @@
 # Cursor
 
-Cursor uses the same external-command contract as Claude Code: it pipes a JSON payload to the command's stdin and shows what it prints. The binary detects Cursor by its payload (it carries `render_width_chars`, `autorun` and `model.param_summary`) and adapts.
+Cursor uses the same external-command contract as Claude Code: it pipes a JSON payload to the command's stdin and shows what it prints. The binary detects Cursor by its payload (it carries `render_width_chars` and `autorun`; `model.param_summary` is optional because the CLI leaves it out when empty) and adapts.
 
 ![The Cursor status line at 38%, 62% and 88% context use](images/cursor.svg)
 
@@ -37,7 +37,9 @@ This runs the published, prebuilt package (Node ≥ 18, no git or build), copies
 
 Use an absolute path. There is no marketplace route: Cursor has no public plugin registry for status lines.
 
-> **Unverified — where the entry goes.** This repo points at two places and I have not checked either against a running Cursor: the install script and the README say Cursor's `settings.json` (`~/.config/Cursor/User/settings.json` on Linux, `~/Library/Application Support/Cursor/User/settings.json` on macOS, `%APPDATA%\Cursor\User\settings.json` on Windows), while [`agent-input-formats.md`](agent-input-formats.md) documents `~/.cursor/cli-config.json` (with `padding`, `updateIntervalMs`, `timeoutMs`), which is presumably the Cursor CLI's file. If the line does not appear, try the other one and please report which worked.
+> **Where the entry goes.** For the **Cursor Agent CLI** (`cursor-agent`, 2026.10.22) it is `statusLine` in `~/.cursor/cli-config.json`, checked against a running CLI: the key is in its config schema, it calls the command, and it draws the output under the prompt (`Auto • ▕▁▏ 5%/256k • 12.3k` after one message). The optional fields are `padding`, `updateIntervalMs` and `timeoutMs`. For the **Cursor desktop app** the install script and README name its `settings.json` (`~/.config/Cursor/User/settings.json` on Linux, `~/Library/Application Support/Cursor/User/settings.json` on macOS, `%APPDATA%\Cursor\User\settings.json` on Windows); that one is **not verified**. If the line does not appear in the app, please report whether it was `settings.json` or `cli-config.json`.
+
+A fresh CLI session sends `null` for every `context_window` field and `model` `default` / `Auto` with no `param_summary`; the line then shows `0%` and `0` until the first message.
 
 From a clone instead: `npm install`, then copy `bin/statusline` to `~/.claude/statusline/` and add the entry above.
 

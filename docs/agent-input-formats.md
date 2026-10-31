@@ -354,10 +354,10 @@ Given the above analysis:
 function canHandle(input: unknown): boolean {
   const obj = input as Record<string, unknown>;
   
-  // Cursor: has render_width_chars, autorun, model.param_summary
+  // Cursor: has render_width_chars and autorun (model.param_summary is optional)
   if (typeof obj.render_width_chars === "number" && 
       typeof obj.autorun === "boolean" &&
-      obj.model && typeof obj.model.param_summary === "string") {
+      obj.model && typeof obj.model === "object") {
     return true;
   }
   

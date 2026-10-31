@@ -9,9 +9,10 @@
 # for status-line plugins), so the install path is:
 #   1. Run the published @statusline/claude-plugin package (prebuilt, needs only Node)
 #   2. It copies the binary to ~/.claude/statusline/
-#   3. Print the JSON snippet to add to Cursor's settings.json
+#   3. Print the JSON snippet to add to Cursor's config
 #
-# Cursor settings.json location:
+# Cursor Agent CLI: ~/.cursor/cli-config.json (verified).
+# Cursor desktop app settings.json location (not verified):
 #   macOS:   ~/Library/Application Support/Cursor/User/settings.json
 #   Linux:   ~/.config/Cursor/User/settings.json
 #   Windows: %APPDATA%\Cursor\User\settings.json
@@ -36,7 +37,7 @@ BINARY_PATH="$DEST_DIR/statusline"
 echo ""
 echo "✓ Binary installed at: $BINARY_PATH"
 echo ""
-echo "→ Add this to your Cursor settings.json:"
+echo "→ Add this to the Cursor Agent CLI config, ~/.cursor/cli-config.json:"
 echo ""
 echo '  {'
 echo '    "statusLine": {'
@@ -45,7 +46,7 @@ echo "      \"command\": \"$BINARY_PATH\""
 echo '    }'
 echo '  }'
 echo ""
-echo "Cursor settings.json location:"
+echo "For the Cursor desktop app (not verified) use its settings.json instead:"
 echo "  macOS:  ~/Library/Application Support/Cursor/User/settings.json"
 echo "  Linux:  ~/.config/Cursor/User/settings.json"
 echo ""

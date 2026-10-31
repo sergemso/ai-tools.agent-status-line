@@ -27,9 +27,9 @@ interface CursorInput {
   version: string;
   output_style: { name: "default" | "compact" };
   context_window: {
-    total_input_tokens: number;
+    total_input_tokens: number | null;
     total_output_tokens: number | null;
-    context_window_size: number;
+    context_window_size: number | null;
     used_percentage: number | null;
     remaining_percentage: number | null;
     current_usage: {
@@ -48,7 +48,6 @@ function isCursorInput(input: AgentInput): input is CursorInput {
     typeof input.autorun === "boolean" &&
     typeof input.model === "object" &&
     input.model !== null &&
-    typeof (input.model as Record<string, unknown>).param_summary === "string" &&
     typeof input.session_id === "string" &&
     typeof input.context_window === "object" &&
     input.context_window !== null
@@ -58,12 +57,12 @@ function isCursorInput(input: AgentInput): input is CursorInput {
 export class CursorAdapter implements StatusLineAdapter {
   readonly agentType: AgentType = "cursor";
   
-  // Detection: render_width_chars (number) + autorun (boolean) + model.param_summary (string)
+  // Detection: render_width_chars (number) + autorun (boolean) + a model object.
+  // model.param_summary is NOT required: the Cursor CLI omits it when empty.
   readonly canHandle = createCanHandle({
     render_width_chars: (v) => typeof v === "number",
     autorun: (v) => typeof v === "boolean",
-    model: (v) => v !== null && typeof v === "object" && 
-      (v as Record<string, unknown>).param_summary !== undefined,
+    model: (v) => v !== null && typeof v === "object",
   });
   
   isInstalled(): boolean {
