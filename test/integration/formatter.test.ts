@@ -1,10 +1,11 @@
 // Integration tests for formatter with unified model - using CLI
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, afterAll } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { spawnSync } from "child_process";
+import { isolatedEnv } from "../isolated-env.js";
 import { UnifiedStatusInput, AgentType } from "../../src/shared/unified-model.js";
 import { adapterRegistry } from "../../src/adapters/index.js";
 
@@ -12,6 +13,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = join(__filename, "..", "..");
 const PROJECT_ROOT = join(__dirname, "..");
 const BIN_PATH = join(PROJECT_ROOT, "bin/statusline");
+const isolated = isolatedEnv();
+afterAll(() => isolated.cleanup());
 
 function loadFixtureDirect(agent: AgentType, name: string): unknown {
   const fixturePath = join(__dirname, "fixtures", agent, `${name}.json`);
@@ -24,6 +27,7 @@ function runFullPipeline(fixture: unknown): string {
     input: JSON.stringify(fixture),
     encoding: "utf-8",
     cwd: PROJECT_ROOT,
+    env: isolated.env,
   });
   
   if (result.status !== 0) {
