@@ -21,7 +21,7 @@ Cursor's payload carries the model, the context window and token totals, but not
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-cursor.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash
 ```
 
 This clones the repo to `~/.claude/claude-code-status-line`, builds it, copies the binary to `~/.claude/statusline/statusline` and prints a JSON snippet. Add it to Cursor's configuration, then restart Cursor:

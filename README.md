@@ -12,9 +12,9 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25
 
 **Jump to your agent:** [Claude Code](#claude-code--plugin-marketplace-recommended) ([guide](docs/claude-code.md)) · [Cursor](#cursor) ([guide](docs/cursor.md)) · [OpenCode](#opencode-tui) ([guide](docs/opencode.md))
 
-[Quickstart](#quickstart) · [In 30 seconds](#in-30-seconds) · [Reading the line](#reading-the-line) · [Agents](#agents) · [Updating and uninstalling](#updating) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting) · [Architecture](#architecture) · [Contributing](#contributing)
+[Quickstart](#quickstart) · [In 30 seconds](#in-30-seconds) · [Reading the line](#reading-the-line) · [Agents](#agents) · [Updating and uninstalling](#updating-and-uninstalling) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting) · [Architecture](#architecture) · [Contributing](#contributing)
 
-**Names, because there are three:** the GitHub repo and the Claude Code marketplace are `claude-code-status-line`; the npm packages are `@statusline/claude-plugin` (the CLI and Claude Code/Cursor binary), `@statusline/core` (the library) and `@statusline/opencode-plugin`; the Claude Code plugin itself is called `statusline`.
+**Names, because there are three:** the GitHub repo is `ai-tools.agent-status-line` and the Claude Code marketplace is `claude-code-status-line`; the npm packages are `@statusline/claude-plugin` (the CLI and Claude Code/Cursor binary), `@statusline/core` (the library) and `@statusline/opencode-plugin`; the Claude Code plugin itself is called `statusline`.
 
 ---
 
@@ -33,7 +33,7 @@ Full guides with screenshots, options and troubleshooting: **[Claude Code](docs/
 ### Claude Code — plugin marketplace (recommended)
 
 ```
-/plugin marketplace add sergemso/claude-code-status-line
+/plugin marketplace add sergemso/ai-tools.agent-status-line
 /plugin install statusline@claude-code-status-line
 /statusline:setup
 ```
@@ -51,7 +51,7 @@ This does the same copy-and-configure step as `/statusline:setup` from the publi
 ### Claude Code — one-shot script
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-claude-code.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-claude-code.sh | bash
 ```
 
 Clones the repo to `~/.claude/claude-code-status-line`, builds it and runs `install --configure`. Updating means `git pull && npm install` in that directory.
@@ -77,7 +77,7 @@ New to the symbols? Read [In 30 seconds](#in-30-seconds) next.
 ### Cursor
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-cursor.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash
 ```
 
 Builds the binary, copies it to `~/.claude/statusline/`, and prints the JSON snippet to add to Cursor's `settings.json` (`~/.config/Cursor/User/settings.json` on Linux, `~/Library/Application Support/Cursor/User/settings.json` on macOS, `%APPDATA%\Cursor\User\settings.json` on Windows). Restart Cursor after. Cursor has no public plugin registry for status lines, so there is no marketplace route.
@@ -456,8 +456,8 @@ Contributions welcome — bug reports, fixtures, new adapters, renderer improvem
 ### Setup
 
 ```bash
-git clone https://github.com/sergemso/claude-code-status-line.git
-cd claude-code-status-line
+git clone https://github.com/sergemso/ai-tools.agent-status-line.git
+cd ai-tools.agent-status-line
 npm install
 npm run build:core    # build @statusline/core first (other packages depend on it)
 npm run build         # build the main CLI

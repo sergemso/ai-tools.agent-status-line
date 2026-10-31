@@ -2,7 +2,7 @@
 # install-opencode.sh — one-shot installer for OpenCode (TUI mode).
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-opencode.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-opencode.sh | bash
 #
 # Two install paths, depending on whether @statusline/opencode-plugin is
 # published to npm:
@@ -25,7 +25,7 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/sergemso/claude-code-status-line.git"
+REPO_URL="https://github.com/sergemso/ai-tools.agent-status-line.git"
 INSTALL_DIR="${STATUSLINE_INSTALL_DIR:-$HOME/.claude/claude-code-status-line}"
 BRANCH="${STATUSLINE_BRANCH:-main}"
 OPENCODE_CONFIG_DIR="${OPENCODE_CONFIG_DIR:-$HOME/.config/opencode}"
