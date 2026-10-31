@@ -58,15 +58,20 @@ function createRateLimitsItems(input: any, config?: UserConfig): SectionItem[] {
   return items;
 }
 
-/** Render a single rate limit window - matches legacy format */
+/** Windows whose id is already a duration ("5h", "7d") need no name; others ("spend") do. */
+const DURATION_ID = /^\d+(h|d|w|mo)$/;
+
+/**
+ * Render a single rate limit window as "<used>% <time left>/<window>", e.g. "6% 1h37m/5h".
+ * Time left and window length read as one fraction, like the context's "42%/200k".
+ * Every window is percentage-based, so the cap (always 100) is not shown.
+ */
 function renderRateLimit(limit: any, config?: any): string {
-  const alias = WINDOW_ALIASES[limit.window]?.alias ?? limit.window;
-  const name = WINDOW_ALIASES[limit.window]?.name ?? "";
+  const label = WINDOW_ALIASES[limit.window]?.name || (WINDOW_ALIASES[limit.window]?.alias ?? limit.window);
+  const named = !DURATION_ID.test(limit.window);
 
   const used = limit.limit - limit.remaining;
   const pct = limit.limit > 0 ? Math.round((used / limit.limit) * 100) : 0;
-  const remaining = limit.remaining;
-  const lmt = limit.limit;
 
   // Color for percentage
   const warn = config?.resetWarn ?? 50;
@@ -75,22 +80,15 @@ function renderRateLimit(limit: any, config?: any): string {
   if (pct >= crit) pctColor = "\x1b[31m"; // RED
   else if (pct >= warn) pctColor = "\x1b[33m"; // YELLOW
 
-  // Format time remaining
   const now = Math.floor(Date.now() / 1000);
-  const resetsAt = limit.resetsAt ?? 0;
-  const left = resetsAt - now;
-  const timeLeft = formatDuration(left);
+  const timeLeft = formatDuration((limit.resetsAt ?? 0) - now);
 
-  // Total - use the limit value (legacy shows / 100 for percentage-based)
-  const totPart = ` \x1b[2m/ ${lmt}\x1b[0m`;
+  // Window length: the id itself when it is a duration, else the period the adapter reported.
+  const windowLen = named ? limit.period : limit.window;
+  const lenPart = windowLen && windowLen !== "custom" ? `\x1b[2m/${windowLen}\x1b[0m` : "";
 
-  // Build parts
-  let namePart = "";
-  if (name) namePart = `\x1b[2m${name}\x1b[0m `;
-
-  let pctPart = `${pctColor}${pct}%\x1b[0m `;
-
-  return `${namePart}\x1b[2m${alias}\x1b[0m ${pctPart}${timeLeft}${totPart}`;
+  const namePart = named ? `\x1b[2m${label}\x1b[0m ` : "";
+  return `${namePart}${pctColor}${pct}%\x1b[0m ${timeLeft}${lenPart}`;
 }
 
 /** Format duration in seconds to human readable (e.g., 1h20m, 5m, 30s, 0s) */

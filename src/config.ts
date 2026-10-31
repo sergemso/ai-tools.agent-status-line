@@ -57,11 +57,12 @@ function usage(): void {
   width [N|auto]                terminal columns to fit the line into (auto = detect from the tty)
   margin N                      columns kept free at the right edge (default 2)
   wizard [--yes] [--preset NAME] [--format STYLE] [--fresh N]  guided setup: measures your baseline, previews text styles (non-interactive with --yes)
-  format [auto|words|short|glyph|ascii]  text style: auto (default: most readable that fits the width), words ("next call 3.6¢"), short ("next 3.6¢"), glyph ("⚡3.6¢") or plain ASCII ("nx 3.6c")
+  format [auto|words|short|glyph|ascii]  text style: auto (default: most readable that fits the width), words ("next call 3.6¢"), short ("next 3.6¢"), glyph ("⚡ 3.6¢") or plain ASCII ("nx 3.6c")
+  separator [TEXT|space|default]  what is drawn between groups (default "|"), e.g. separator ·  (also: • / ‖ ⋮)
   format ITEM words|short|glyph|ascii|default  per-item or per-section override at any width, e.g. format overhead glyph, format cost.session words
   dump [PATH|off]               write the raw status-line JSON + detected width/level to PATH on each run
   reset [KEY...]                drop saved settings (all if none given)
-      KEY: BASE_MODEL SECTIONS RESETS CONTEXT_WARN CONTEXT_CRIT CACHE_WARN CACHE_CRIT RESET_WARN RESET_CRIT WIDTH MARGIN DUMP FRESH_TOKENS SUMMARY_TOKENS OVERHEAD_WARN OVERHEAD_CRIT`);
+      KEY: BASE_MODEL SECTIONS RESETS CONTEXT_WARN CONTEXT_CRIT CACHE_WARN CACHE_CRIT RESET_WARN RESET_CRIT WIDTH MARGIN SEPARATOR DUMP FRESH_TOKENS SUMMARY_TOKENS OVERHEAD_WARN OVERHEAD_CRIT`);
 }
 
 function die(msg: string): never {
@@ -98,6 +99,7 @@ async function cmdShow(claudeConfigDir: string): Promise<void> {
     ["RESET_CRIT", String(DEFAULT_RESET_CRIT)],
     ["WIDTH", `${DEFAULT_WIDTH}(auto)`],
     ["MARGIN", String(DEFAULT_MARGIN)],
+    ["SEPARATOR", "|"],
     ["FRESH_TOKENS", String(DEFAULT_FRESH_TOKENS)],
     ["SUMMARY_TOKENS", String(DEFAULT_SUMMARY_TOKENS)],
     ["OVERHEAD_WARN", String(DEFAULT_OVERHEAD_WARN)],
@@ -343,6 +345,27 @@ async function cmdMargin(claudeConfigDir: string, args: string[]): Promise<void>
   console.log(`margin: ${args[0]}`);
 }
 
+/** Visible, short, single-line text only: it is drawn on every status line refresh. */
+const SEPARATOR_OK = /^[^\x00-\x1f\x7f\s]{1,3}$/u;
+
+async function cmdSeparator(claudeConfigDir: string, args: string[]): Promise<void> {
+  if (args.length === 0) {
+    const config = await loadConfig(claudeConfigDir);
+    console.log(`separator: ${config.SEPARATOR || "| (default)"}`);
+    return;
+  }
+  if (args.length > 1) die("separator: a single TEXT of 1-3 characters, space or default");
+  const v = args[0];
+  if (v === "default") {
+    await dropSettings(claudeConfigDir, ["SEPARATOR"]);
+    console.log("separator: | (default)");
+    return;
+  }
+  if (v !== "space" && !SEPARATOR_OK.test(v)) die("separator: 1-3 visible characters (no spaces), space or default");
+  await putSetting(claudeConfigDir, "SEPARATOR", v);
+  console.log(`separator: ${v}`);
+}
+
 async function cmdFormat(claudeConfigDir: string, args: string[]): Promise<void> {
   const config = await loadConfig(claudeConfigDir);
   const styles = ["words", "short", "glyph", "ascii"];
@@ -428,6 +451,7 @@ async function cmdReset(claudeConfigDir: string, args: string[]): Promise<void> 
     "RESET_CRIT",
     "WIDTH",
     "MARGIN",
+    "SEPARATOR",
     "DUMP",
     "FRESH_TOKENS",
     "SUMMARY_TOKENS",
@@ -475,6 +499,9 @@ export async function runConfig(argv: string[]): Promise<void> {
       break;
     case "wizard":
       await runWizard(claudeConfigDir, args);
+      break;
+    case "separator":
+      await cmdSeparator(claudeConfigDir, args);
       break;
     case "format":
       await cmdFormat(claudeConfigDir, args);

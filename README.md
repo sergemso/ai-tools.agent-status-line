@@ -3,7 +3,7 @@
 A rich, single-line status bar (repository and package name: `claude-code-status-line`) for **Claude Code**, **Cursor**, and **OpenCode** — model and price multiplier, context usage, session cost, prompt-cache timer, rate-limit resets. Self-shrinking on narrow terminals. TypeScript, zero runtime deps.
 
 ```text
-Sonnet 5.5 hi | ▕▄▏ 42%/200k | $5.6Σ ⚡3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m | 12% 4h 59m / 5h | 55% 6d 23h / 7d
+Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m | 12% 4h59m/5h | 55% 6d23h/7d
 ```
 
 [Quickstart](#quickstart) · [In 30 seconds](#in-30-seconds) · [Reading the line](#reading-the-line) · [Agents](#agents) · [Configuration](#configuration) · [Architecture](#architecture) · [Contributing](#contributing) · [Troubleshooting](#troubleshooting)
@@ -13,15 +13,15 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k | $5.6Σ ⚡3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m 
 ## In 30 seconds
 
 ```text
-Sonnet 5.5 med | ▕▂▏ 18%/1M | 31¢Σ ⚡3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m
+Sonnet 5.5 med | ▕▂▏ 18%/1M | Σ 31¢ ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m
 ```
 
 On a wide terminal the same line reads in words (`session 31¢ next call 3.6¢ … restart: maybe at 7, yes at 9 calls`); the symbols appear as the window narrows.
 
-- **`⚡3.6¢`: what your next message costs just to re-read the conversation so far.** It grows with the context, and jumps when the cache goes cold.
+- **`⚡ 3.6¢`: what your next message costs just to re-read the conversation so far.** It grows with the context, and jumps when the cache goes cold.
 - **`⟲ 7 9`: when to start fresh.** Expect fewer than 7 more messages: stay. 9 or more: a new session (or `/compact`) is cheaper. The numbers fall as the context grows. No `⟲` means a restart would not pay back soon.
 - **`⏱ 25m`: how long the prompt cache stays warm.** After it goes cold (`⏱ cold`) the next message re-pays for the whole conversation, which is the moment to consider restarting.
-- **`31¢Σ`** is the session's total cost so far; **`⇲ 25¢`** is what a compaction would cost.
+- **`Σ 31¢`** is the session's total cost so far; **`⇲ 25¢`** is what a compaction would cost.
 
 These are estimates (they ignore your prompt and the output, and assume a typical summary size), good for the shape of the decision rather than the exact bill. Run `statusline config wizard` to tune it, and read on for every indicator.
 
@@ -30,7 +30,7 @@ These are estimates (they ignore your prompt and the output, and assume a typica
 Example, 180k tokens of context, warm cache, Sonnet pricing:
 
 ```text
-Sonnet 5.5 med | ▕▁▏ 18%/1M | 31¢Σ ⚡3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m
+Sonnet 5.5 med | ▕▁▏ 18%/1M | Σ 31¢ ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m
 ```
 
 ### Text styles: words, short, glyph
@@ -39,8 +39,8 @@ Every efficiency and cache item has three text forms. By default (`auto`) the li
 
 | Item | words | short | glyph |
 |---|---|---|---|
-| Session cost | `session 31¢` | `31¢ total` | `31¢Σ` |
-| Next request | `next call 3.6¢` | `next 3.6¢` | `⚡3.6¢` |
+| Session cost | `session 31¢` | `31¢ total` | `Σ 31¢` |
+| Next request | `next call 3.6¢` | `next 3.6¢` | `⚡ 3.6¢` |
 | Compaction | `compact cost 25¢` | `compact 25¢` | `⇲ 25¢` |
 | Restart thresholds | `restart: maybe at 7, yes at 9 calls` | `restart 7–9` | `⟲ 7 9` |
 | Cache | `cache 25m` / `cache cold` | `cache 25m` / `cache cold` | `⏱ 25m` / `⏱ cold` |
@@ -97,8 +97,8 @@ All costs are US dollars. Amounts under $1 show as whole cents (`31¢`); under 1
 
 | Indicator | Meaning | How to use it |
 |---|---|---|
-| `31¢Σ` | **Total cost of this session so far** (as reported by Claude Code). | Plain spend tracking. It only goes up. |
-| `⚡3.6¢` | **Approximate cost of the next request's context**: the whole current context re-read from cache at 10% of the input price when the cache is warm, or re-written at the cache-write price (1.25× for a 5-minute cache, 2× for 1 hour) when it is cold. Your new prompt and the output tokens are **not** included. | It is a floor, not the exact bill. It grows with every turn. A jump (for example 3.6¢ → 72¢) means the cache expired and the next call re-pays for the whole context. Colours: 🟩 < 5¢ · 🟨 < 20¢ · 🟥 ≥ 20¢. |
+| `Σ 31¢` | **Total cost of this session so far** (as reported by Claude Code). | Plain spend tracking. It only goes up. |
+| `⚡ 3.6¢` | **Approximate cost of the next request's context**: the whole current context re-read from cache at 10% of the input price when the cache is warm, or re-written at the cache-write price (1.25× for a 5-minute cache, 2× for 1 hour) when it is cold. Your new prompt and the output tokens are **not** included. | It is a floor, not the exact bill. It grows with every turn. A jump (for example 3.6¢ → 72¢) means the cache expired and the next call re-pays for the whole context. Colours: 🟩 < 5¢ · 🟨 < 20¢ · 🟥 ≥ 20¢. |
 | `⇲ 25¢` | **Cost of `/compact`-style restarts**: reading the current context once, generating a summary, and writing the new baseline (fresh + summary tokens). | The price of starting over with a summary. Compare with `⚡`: if one call costs far less than `⇲`, a restart takes several calls to pay back, which is what `⟲` works out. |
 | `⟲ 7 9` | **Restart thresholds** in expected calls — see below. | Decide stay vs restart. |
 
@@ -135,7 +135,7 @@ Known simplifications: the context is assumed not to grow during those calls (th
 
 | Indicator | Meaning |
 |---|---|
-| `12% 4h 59m / 5h` | Share of a rate-limit window used, time until it resets, and the window (`5h`, `7d`, `spend`). Only on subscription accounts: other sessions get no `rate_limits` from Claude Code. 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80%. |
+| `12% 4h59m/5h` | Share of a rate-limit window used, time until it resets, and the window (`5h`, `7d`, `spend`). Only on subscription accounts: other sessions get no `rate_limits` from Claude Code. 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80%. |
 
 ### Drop order
 
@@ -163,7 +163,7 @@ Width is detected from the terminal (`stty`), so the line refits on the next ref
 
 **Smart shrinking:** on a narrow terminal, items (not whole sections) drop one at a time, lowest priority first, until the line fits. The order is strict: once an item is dropped, everything ranked below it is dropped too. See [Drop order](#drop-order).
 
-**Groups:** items are grouped with ` | ` between groups and a single space inside a group: model · context · session efficiency · cache · (rate-limit resets and other extras). Fewer groups means fewer delimiters, so more room for data.
+**Groups:** items are grouped with ` | ` between groups (customizable: `config separator ·`) and a single space inside a group: model · context · session efficiency · cache · each rate-limit window (its own group) and other extras. Fewer groups means fewer delimiters, so more room for data.
 
 **Auto price refresh:** model prices are fetched from Anthropic's public pricing page and cached in `~/.claude/model-prices.json` (re-fetched every hour by default).
 
@@ -333,6 +333,7 @@ statusline config resets 5h,7d,spend          # which reset windows to show
 statusline config thresholds context 60 85    # yellow at 60%, red at 85%
 statusline config width 100                   # or: auto
 statusline config margin 2                    # right-edge padding
+statusline config separator ·                 # between groups: | (default), ·, •, ‖ ... or "space"
 statusline config dump /tmp/sl.txt            # debug: raw JSON + width diagnostics
 statusline config reset                       # drop all saved settings
 ```
@@ -357,6 +358,7 @@ Any setting can be overridden via `STATUSLINE_<KEY>` (e.g. `STATUSLINE_RESETS`, 
 | `STATUSLINE_PRICES_TTL` | Seconds before price table re-fetch (default 3600) |
 | `STATUSLINE_EMOJI_WIDTH` | Cells drawn for `⚡` (1 or 2, default 2); the wizard measures it |
 | `STATUSLINE_FORMAT` | Text style: `auto` (default), `words`, `short`, `glyph` or `ascii` — see [Text styles](#text-styles-words-short-glyph) |
+| `STATUSLINE_SEPARATOR` | Text between groups: 1-3 visible characters (default `\|`), or `space` |
 | `STATUSLINE_FORMATS` | Per-section or per-item overrides, e.g. `overhead=glyph,cost.session=words` |
 | `STATUSLINE_DUMP` | Same as `config dump PATH` |
 | `CLAUDE_CONFIG_DIR` | Config directory (default `~/.claude`) |

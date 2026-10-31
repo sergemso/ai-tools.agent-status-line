@@ -13,8 +13,13 @@ import { compositePriority } from "./priority.js";
 import { visibleWidth } from "./width.js";
 
 /** Default separator widths */
-const SECTION_SEPARATOR_WIDTH = 3; // " | "
+export const DEFAULT_SECTION_SEPARATOR = " | ";
 const ITEM_SEPARATOR_WIDTH = 1;    // " "
+
+/** Columns taken by the separator drawn between sections (user-configurable). */
+function sectionSeparatorWidth(ctx: RenderContext): number {
+  return visibleWidth(ctx.config?.sectionSeparator ?? DEFAULT_SECTION_SEPARATOR);
+}
 
 /**
  * Resolve a SectionItem's content to a plain string.
@@ -77,7 +82,7 @@ function calculateSectionOrderWidth(sections: Section[], ctx: RenderContext, ava
       // Check if any previous section has items
       const prevHasItems = sectionsWithWidth.slice(0, i).some((s) => s.items.length > 0);
       if (prevHasItems) {
-        width += SECTION_SEPARATOR_WIDTH;
+        width += sectionSeparatorWidth(ctx);
       }
     }
     
@@ -183,7 +188,7 @@ export function buildLayout(
     // and we already have items from other sections
     const hasOtherSections = Array.from(keptItems).some((k) => !k.startsWith(`${sectionId}:`));
     if (sectionKeptCount === 0 && hasOtherSections) {
-      itemWidth += SECTION_SEPARATOR_WIDTH;
+      itemWidth += sectionSeparatorWidth(ctx);
     }
 
     // Check if we have space
@@ -222,11 +227,11 @@ export function buildLayout(
           });
           
           // Recalculate usedWidth (simpler: recalc from scratch)
-          usedWidth = recalcUsedWidth(keptItems, allItems, availableWidth);
+          usedWidth = recalcUsedWidth(keptItems, allItems, availableWidth, sectionSeparatorWidth(ctx));
           
           // Now add the critical item
           keptItems.add(itemKey);
-          usedWidth = recalcUsedWidth(keptItems, allItems, availableWidth);
+          usedWidth = recalcUsedWidth(keptItems, allItems, availableWidth, sectionSeparatorWidth(ctx));
         } else {
           // No non-critical item to evict - drop this critical item
           droppedItems.push({
@@ -308,7 +313,8 @@ export function buildLayout(
 function recalcUsedWidth(
   keptItems: Set<string>,
   allItems: Array<{ sectionId: string; item: SectionItem & { estimatedWidth: number } }>,
-  _availableWidth: number
+  _availableWidth: number,
+  sepWidth: number
 ): number {
   let width = 0;
   const sectionCounts = new Map<string, number>();
@@ -342,7 +348,7 @@ function recalcUsedWidth(
         .slice(0, i)
         .some((s) => (sectionCounts.get(s) ?? 0) > 0);
       if (prevHasItems) {
-        width += SECTION_SEPARATOR_WIDTH;
+        width += sepWidth;
       }
     }
   }

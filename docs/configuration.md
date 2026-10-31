@@ -27,6 +27,7 @@
 | `EMOJI_WIDTH` | `STATUSLINE_EMOJI_WIDTH` | `2` | Terminal cells drawn for `⚡` (1 or 2) |
 | `FORMATS` | `STATUSLINE_FORMATS` | none | Overrides, `section.item=style` or `section=style`, comma-separated |
 | `MARGIN` | `STATUSLINE_MARGIN` | `2` | Right margin in columns |
+| `SEPARATOR` | `STATUSLINE_SEPARATOR` | `\|` | Text between groups: 1-3 visible characters (e.g. `·`, `•`), or `space` |
 | `DUMP` | `STATUSLINE_DUMP` | (empty) | Debug dump file path |
 | `PRICES_TTL` | `STATUSLINE_PRICES_TTL` | `3600` | Price cache TTL (seconds) |
 

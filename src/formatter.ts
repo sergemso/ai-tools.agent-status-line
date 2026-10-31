@@ -74,6 +74,7 @@ async function adaptInputForCore(
       limit: r.limit,
       remaining: r.limit !== null ? r.limit - (r.limit * (r.usedPercentage ?? 0) / 100) : 0,
       resetsAt: r.resetsAt,
+      period: r.period,
     })),
     overhead,
     usage: {
@@ -217,6 +218,8 @@ function buildUserConfig(options: FormatterOptions): UserConfig {
   if (options.overheadCrit !== undefined) config.overheadCrit = options.overheadCrit;
   if (options.format === "auto" || options.format === "glyph" || options.format === "short" || options.format === "words" || options.format === "ascii") config.format = options.format;
   if (options.formats) config.formats = parseFormats(options.formats);
+  // "space" is the saved spelling of a blank separator (settings values are trimmed)
+  if (options.separator) config.sectionSeparator = ` ${options.separator === "space" ? " " : options.separator} `;
 
   return config;
 }
