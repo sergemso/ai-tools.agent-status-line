@@ -1,5 +1,5 @@
 {
-  ".": "1.1.4",
+  ".": "1.2.0",
   "packages/core": "1.1.1",
   "packages/opencode-plugin": "1.1.2"
 }
