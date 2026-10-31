@@ -16,7 +16,7 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25
 
 **Jump to your agent:** [Claude Code](#claude-code--plugin-marketplace-recommended) ([guide](docs/claude-code.md)) · [Cursor](#cursor) ([guide](docs/cursor.md)) · [OpenCode](#opencode-tui) ([guide](docs/opencode.md))
 
-[Quickstart](#quickstart) · [In 30 seconds](#in-30-seconds) · [Reading the line](#reading-the-line) · [Agents](#agents) · [Updating and uninstalling](#updating-and-uninstalling) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting) · [Architecture](#architecture) · [Contributing](#contributing)
+[Quickstart](#quickstart) · [In 30 seconds](#in-30-seconds) · [Reading the line](#reading-the-line) · [Agents](#agents) · [Updating and uninstalling](#updating-and-uninstalling) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting) · [Contributing](#contributing)
 
 ---
 
@@ -133,7 +133,7 @@ These are estimates (they ignore your prompt and the output, and assume a typica
 
 ## Reading the line
 
-Each group below explains one part of the line. The image shows one Claude Code session at a fixed 130 columns in six states, each captioned in the image: fresh session, mid session (next-call cost and restart thresholds appear), cold cache, context nearly full, rate limit close, and a pricier model. It uses the words and short forms; the tables below show the glyph form, which is what you get on a narrower window (see [Text styles](#text-styles-words-short-glyph)).
+Each group below explains one part of the line. The image shows one Claude Code session at a fixed 130 columns in six states, each captioned in the image: fresh session, mid session (next-call cost and restart thresholds appear), cold cache, context nearly full, rate limit close, and a pricier model. It uses the words and short forms; the tables below show the glyph form, which is what you get on a narrower window (see [Text styles](#text-styles-and-behaviour)).
 
 ![Six states of the Claude Code status line](docs/images/claude-code-states.svg)
 
@@ -233,43 +233,11 @@ Width is detected from the terminal (`stty`), so the line refits on the next ref
 
 ---
 
-### Text styles: words, short, glyph
+### Text styles and behaviour
 
-Every efficiency and cache item has three text forms. By default (`auto`) the line uses the most readable form in which everything fits your terminal width, and falls back towards glyphs as the window narrows; items start to drop only after the glyph form no longer fits.
+Each item has three text forms: **words** (`session 31¢`), **short** (`31¢ total`) and **glyph** (`Σ 31¢`), plus a plain-**ascii** fallback. By default the line uses the most readable form that fits and falls towards glyphs as the window narrows; items drop only after glyphs no longer fit. Force one with `statusline config format glyph`.
 
-| Item | words | short | glyph |
-|---|---|---|---|
-| Session cost | `session 31¢` | `31¢ total` | `Σ 31¢` |
-| Next request | `next call 3.6¢` | `next 3.6¢` | `⚡ 3.6¢` |
-| Compaction | `compact cost 25¢` | `compact 25¢` | `⇲ 25¢` |
-| Restart thresholds | `restart: maybe at 7, yes at 9 calls` | `restart 7–9` | `⟲ 7 9` |
-| Cache | `cache 25m` / `cache cold` | `cache 25m` / `cache cold` | `⏱ 25m` / `⏱ cold` |
-
-A fourth style, **`ascii`**, uses plain ASCII only (`31c tot`, `nx 3.6c`, `cmp 27c`, `rst 7 10`, `[##--]` for the bar) for fonts or consoles that cannot show the symbols. `auto` never picks it by width; it is chosen automatically only when the environment cannot show Unicode (non-UTF-8 locale, or `TERM=linux`/`dumb`), and the wizard offers it when you say some symbols look broken. A symbol missing from a font cannot be detected by a program, which is why the wizard asks.
-
-The words form needs roughly 120 columns, short about 100, glyph about 70. Force a style at any width:
-
-```bash
-statusline config format glyph                  # always compact, at any width
-statusline config format words                  # always readable
-statusline config format ascii                  # plain ASCII only
-statusline config format auto                   # back to width-based (default)
-statusline config format overhead glyph         # one section: cost, overhead, cache
-statusline config format cost.session words     # one item (see `statusline config format` for the keys)
-statusline config format cost.session default   # remove an override
-```
-
-Environment variables work too: `STATUSLINE_FORMAT=glyph`, `STATUSLINE_FORMATS=overhead=glyph,cost.session=words`. Precedence: item override, then section override, then the global format, then the width-based choice. A forced style never changes with width, so a forced `words` item can push other items off a narrow line. Without a detected terminal width, the line uses glyphs.
-
-The examples in this README use the glyph form.
-
-### Behaviour
-
-**Smart shrinking:** on a narrow terminal, items (not whole sections) drop one at a time, lowest priority first, until the line fits. The order is strict: once an item is dropped, everything ranked below it is dropped too. See [Drop order](#drop-order).
-
-**Groups:** items are grouped with ` | ` between groups (customizable: `config separator ·`) and a single space inside a group: model · context · session efficiency · cache · each rate-limit window (its own group) and other extras. Fewer groups means fewer delimiters, so more room for data.
-
-**Auto price refresh:** model prices are fetched from Anthropic's public pricing page and cached in `~/.claude/model-prices.json` (re-fetched every hour by default).
+Details, the full table and per-item overrides: [docs/text-styles.md](docs/text-styles.md). The examples in this README use the glyph form.
 
 ---
 
@@ -308,73 +276,9 @@ Your settings live in `~/.claude/statusline/config`; updates never touch them.
 
 ## Configuration
 
-Three layers, in priority order: **env var** > **config file** > **defaults**.
+Three layers, in priority order: **env var** > **config file** > **defaults**. Start with `/statusline:config` (Claude Code) or `statusline config wizard` (any terminal), and run `statusline config show` to see every value and where it comes from.
 
-### Setup wizard
-
-```bash
-statusline config wizard
-```
-
-A short guided setup, agent-agnostic: each adapter supplies its own sample session for the previews and, where it can, a way to measure the baseline (`--agent claude-code|cursor`, otherwise the installed agent is detected and you choose if there are several). It first **measures** what it can: for Claude Code, the median starting context of your recent sessions (read from the transcripts under `~/.claude/projects`), which sets the baseline used by `⇲` and `⟲` instead of the 25,000-token guess; agents with no usable history keep the default. It also measures how many terminal cells `⚡` takes (saved as `EMOJI_WIDTH` when it is 1) and asks whether the symbols display correctly (answering no selects the `ascii` style). Then it asks about taste: a preset (balanced, minimal, cost-watcher, everything, cryptic), a text style with a preview at 150, 110 and 80 columns, and the base model for the multiplier. It shows the final line and asks before saving. It does not touch Claude Code's `settings.json`.
-
-Scripted use: `statusline config wizard --yes --preset cost-watcher --format glyph [--fresh 29000] [--agent NAME] [--no-calibrate]`. Without `--yes` it needs a terminal. The summary-size estimate (`SUMMARY_TOKENS`) is not measured and stays at its default.
-
-### CLI
-
-`statusline` below is the installed binary (`~/.claude/statusline/statusline`, or `bin/statusline` in a clone). It is not on your `PATH` by default; add an alias or call it by full path.
-
-```bash
-statusline config show                        # see current settings + their source
-statusline config model "Claude Opus 5.5"     # base model for price multiplier
-statusline config sections show stats         # always show cache hit rate
-statusline config sections only model context cost  # minimal line
-statusline config resets 5h,7d,spend          # which reset windows to show
-statusline config thresholds context 60 85    # yellow at 60%, red at 85%
-statusline config width 100                   # or: auto
-statusline config margin 2                    # right-edge padding
-statusline config separator ·                 # between groups: | (default), ·, •, ‖ ... or "space"
-statusline config dump /tmp/sl.txt            # debug: raw JSON + width diagnostics
-statusline config reset                       # drop all saved settings
-```
-
-### Environment variables
-
-Any setting can be overridden via `STATUSLINE_<KEY>` (e.g. `STATUSLINE_RESETS`, `STATUSLINE_CONTEXT_WARN`). Set them in the `env` block of `~/.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "STATUSLINE_RESETS": "5h,7d,spend",
-    "STATUSLINE_CONTEXT_WARN": "60",
-    "STATUSLINE_CUSTOM_RESET": "sprint|2026-10-17 09:00"
-  }
-}
-```
-
-| Variable | Meaning |
-|---|---|
-| `STATUSLINE_CUSTOM_RESET` | `label\|YYYY-MM-DD HH:MM` — adds a custom countdown section |
-| `STATUSLINE_PRICES_TTL` | Seconds before price table re-fetch (default 3600) |
-| `STATUSLINE_EMOJI_WIDTH` | Cells drawn for `⚡` (1 or 2, default 2); the wizard measures it |
-| `STATUSLINE_FORMAT` | Text style: `auto` (default), `words`, `short`, `glyph` or `ascii` — see [Text styles](#text-styles-words-short-glyph) |
-| `STATUSLINE_SEPARATOR` | Text between groups: 1-3 visible characters (default `\|`), or `space` |
-| `STATUSLINE_FORMATS` | Per-section or per-item overrides, e.g. `overhead=glyph,cost.session=words` |
-| `STATUSLINE_DUMP` | Same as `config dump PATH` |
-| `CLAUDE_CONFIG_DIR` | Config directory (default `~/.claude`) |
-
-### Sections reference
-
-| Name | Default | Shows |
-|---|---|---|
-| `model` | on | Model name, price multiplier, effort level |
-| `context` | on | Context bar + % + window size |
-| `overhead` | on | `⚡` next-request cost, `⇲` compaction cost, `⟲` restart thresholds, cold-cache cost |
-| `cost` | on | `Σ` session cost |
-| `cache` | on | Prompt-cache timer + (optionally) hit rate |
-| `stats` | off | Always show cache hit rate (default: only when < 80%) |
-| `tokens` | off | Total session tokens (mirrors context %) |
-| `resets` | on | Rate-limit reset windows |
+The wizard, every CLI command, all `STATUSLINE_*` environment variables and the sections reference are in **[docs/configuration.md](docs/configuration.md)**.
 
 ---
 
@@ -398,124 +302,14 @@ Any setting can be overridden via `STATUSLINE_<KEY>` (e.g. `STATUSLINE_RESETS`, 
 
 ---
 
-## Architecture
-
-```
-                 ┌─────────────────────────────────────────┐
-                 │              @statusline/core           │   ← reusable library
-                 │  sections · priority-layout · renderers │
-                 └────────────────▲────────────────────────┘
-                                  │
-            ┌─────────────────────┼─────────────────────┐
-            │                     │                     │
-   ┌────────┴────────┐  ┌─────────┴─────────┐  ┌────────┴────────────┐
-   │ claude-code     │  │ cursor            │  │ opencode-plugin     │
-   │ adapter         │  │ adapter           │  │ (in-process TUI)    │
-   └────────┬────────┘  └─────────┬─────────┘  └─────────────────────┘
-            │                     │
-            └──────────┬──────────┘
-                       │
-              ┌────────▼────────┐
-              │  formatter.ts   │  ← section-priority pipeline
-              │  (fallback to   │
-              │   legacy)       │
-              └────────┬────────┘
-                       │
-                  ANSI string
-```
-
-**Monorepo layout:**
-
-```
-packages/
-  core/                  @statusline/core — sections, layout engine, renderers
-  opencode-plugin/       @statusline/opencode-plugin — OpenCode TUI plugin
-commands/                Claude Code slash commands (/statusline:setup, /statusline:config)
-hooks/                   Claude Code SessionStart hook (keeps the copied binary current)
-.claude-plugin/          plugin.json + marketplace.json for the Claude Code marketplace
-scripts/                 one-shot installers (Claude Code, Cursor, OpenCode)
-docs/                    adapters, configuration, multi-agent, releasing
-src/
-  adapters/              claude-code.ts, cursor.ts, adapter registry
-  formatter.ts           new section-priority pipeline
-  formatter.legacy.ts    preserved as the error fallback only
-  statusline.ts          CLI entry: parse → format → output
-  shared/                constants, colors, formatting, prices, terminal
-test/
-  fixtures/              JSON fixtures per agent (Claude Code, Cursor)
-  integration/           end-to-end + formatter tests via the CLI binary
-```
-
-**Key design decisions:**
-
-- **Section-priority pipeline:** sections declare a `Priority` (NONE→CRITICAL). On overflow, the layout engine drops lowest-priority items first; CRITICAL items can evict lower-priority ones.
-- **No longer legacy-identical:** this fork changed the item labels, cost formats, grouping, separators and drop order, so the pipeline does not match `formatter.legacy.ts` byte for byte. The legacy formatter remains only as the error fallback.
-- **Grouping and priorities:** `regroup()` in `packages/core/src/sections/index.ts` merges the built-in sections into groups by item key, and gives every group the same priority so item priority alone decides what drops first. The layout (`packages/core/src/layout.ts`) drops in strict order: after the first item that does not fit, everything ranked below it is dropped too. Item priorities live in the section files.
-- **Restart economics:** `⚡`, `⇲` and `⟲` are computed in `calculateOverhead` (`src/formatter.ts`) from the price table, `recache_tokens_if_cold`, the cache TTL and the `FRESH_TOKENS` / `SUMMARY_TOKENS` settings. Price-table loading (`src/shared/prices.ts`) always uses the file on disk, however old; the refresh (`src/refresh-prices.ts`) rejects tables that do not look like Claude model prices.
-- **Unicode-aware width:** CJK/emoji count as 2 display columns, combining marks as 0 — so the layout engine makes correct compaction decisions for all content.
-
----
-
 ## Contributing
 
-Contributions welcome — bug reports, fixtures, new adapters, renderer improvements, docs.
+Bug reports, fixtures, new adapters, renderer improvements and docs are welcome. Setup, common tasks, commit style, pull requests and good first issues are in **[CONTRIBUTING.md](CONTRIBUTING.md)**; how the code is organised is in **[docs/architecture.md](docs/architecture.md)**.
 
-### Setup
-
-```bash
-git clone https://github.com/sergemso/ai-tools.agent-status-line.git
-cd ai-tools.agent-status-line
-npm install
-npm run build:core    # build @statusline/core first (other packages depend on it)
-npm run build         # build the main CLI
-npm test
-```
-
-### Common tasks
-
-| Task | Command |
-|---|---|
-| Run tests once | `npm test` |
-| Watch tests | `npm run test:watch` |
-| Build core only | `npm run build:core` |
-| Build everything | `npm run build` |
-| Lint | `npm run lint` |
-| Smoke-test the packed tarballs (as CI does) | `npm run smoke:pack` |
-| Regenerate the doc images (after building) | `npm run docs:images` |
-| Add a test fixture | drop a JSON file in `test/fixtures/<agent>/`, add it to the loop in `test/adapters/adapter.test.ts` |
-
-### Adding a new agent adapter
-
-1. Read [`docs/adding-adapters.md`](docs/adding-adapters.md) — step-by-step guide.
-2. Create `src/adapters/<agent>.ts` implementing `StatusLineAdapter`.
-3. Register in `src/adapters/index.ts` (more specific adapters first).
-4. Add fixtures in `test/fixtures/<agent>/` (basic, full, edge-empty, edge-null at minimum).
-5. Run `npm test` — your adapter is auto-covered by the registry tests.
-
-### Good first issues
-
-- **Remove `formatter.legacy.ts`:** delete the legacy formatter and the fallback path once the new pipeline has proved stable.
-- **Type safety:** replace `any` in `adaptInputForCore()` / `RenderContext.input` with a typed `CoreRenderInput`.
-- **CI hardening:** make `npm run lint` a required gate (it is `continue-on-error` in `.github/workflows/ci.yml` until the ESLint config is finished).
-- **Test isolation:** the integration tests read your real `~/.claude/statusline/config`, so a custom `SEPARATOR` or `FORMAT` makes `end-to-end.test.ts` fail locally. Point them at a temporary `CLAUDE_CONFIG_DIR`.
-- **New renderer:** VS Code / Neovim renderers exist in `@statusline/core` but have no integration tests.
-
-### Commit style and releases
-
-Use Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`). They are not just style: releases are automated from them. A `feat:` or `fix:` that changes files in a package opens a Release PR for that package (`@statusline/core`, `@statusline/opencode-plugin`, or the root `@statusline/claude-plugin`); `docs:`, `test:` and `chore:` do not. Never bump versions by hand. See [`docs/releasing.md`](docs/releasing.md). Keep commits focused, and prefer squash-merging so one change produces one changelog entry.
-
-### Pull requests
-
-- One concern per PR. Large multi-phase refactors should be split.
-- Include tests for new behavior. New adapters need fixtures.
-- Update docs (`docs/`, `README.md`) if you change user-facing behavior.
-- `npm test` must pass. `npm run build` must succeed.
-
-### License
+## License
 
 MIT — see [LICENSE](LICENSE).
 
----
 
 ## Credits
 

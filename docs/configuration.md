@@ -1,5 +1,17 @@
 # Configuration Reference
 
+Three layers, in priority order: **env var** > **config file** > **defaults**. For a guided start, run the [setup wizard](#setup-wizard); for the full list of settings, read on.
+
+## Setup wizard
+
+```bash
+statusline config wizard
+```
+
+A short guided setup, agent-agnostic: each adapter supplies its own sample session for the previews and, where it can, a way to measure the baseline (`--agent claude-code|cursor`, otherwise the installed agent is detected and you choose if there are several). It first **measures** what it can: for Claude Code, the median starting context of your recent sessions (read from the transcripts under `~/.claude/projects`), which sets the baseline used by `⇲` and `⟲` instead of the 25,000-token guess; agents with no usable history keep the default. It also measures how many terminal cells `⚡` takes (saved as `EMOJI_WIDTH` when it is 1) and asks whether the symbols display correctly (answering no selects the `ascii` style). Then it asks about taste: a preset (balanced, minimal, cost-watcher, everything, cryptic), a text style with a preview at 150, 110 and 80 columns, and the base model for the multiplier. It shows the final line and asks before saving. It does not touch Claude Code's `settings.json`.
+
+Scripted use: `statusline config wizard --yes --preset cost-watcher --format glyph [--fresh 29000] [--agent NAME] [--no-calibrate]`. Without `--yes` it needs a terminal. The summary-size estimate (`SUMMARY_TOKENS`) is not measured and stays at its default.
+
 ## Settings File Locations
 
 | Agent | Config File | Settings Key |
@@ -23,7 +35,7 @@
 | `SECTIONS` | `STATUSLINE_SECTIONS` | Auto per agent | Enabled sections (comma-separated) |
 | `RESETS` | `STATUSLINE_RESETS` | `5h,7d,spend` | Rate limit windows to show |
 | `WIDTH` | `STATUSLINE_WIDTH` | `0` (auto) | Terminal width (0 = auto-detect) |
-| `FORMAT` | `STATUSLINE_FORMAT` | `auto` | Text style: `auto` (most readable that fits), `words`, `short`, `glyph`, `ascii` |
+| `FORMAT` | `STATUSLINE_FORMAT` | `auto` | Text style: `auto` (most readable that fits), `words`, `short`, `glyph`, `ascii`; see [text-styles.md](text-styles.md) |
 | `EMOJI_WIDTH` | `STATUSLINE_EMOJI_WIDTH` | `2` | Terminal cells drawn for `⚡` (1 or 2) |
 | `FORMATS` | `STATUSLINE_FORMATS` | none | Overrides, `section.item=style` or `section=style`, comma-separated |
 | `MARGIN` | `STATUSLINE_MARGIN` | `2` | Right margin in columns |
@@ -33,16 +45,18 @@
 
 ### Section Names
 
-| Section | Description | Requires Data |
-|---------|-------------|---------------|
-| `model` | Model name and effort level | Always |
-| `context` | Context usage bar | Context window |
-| `tokens` | Session token count | Token usage |
-| `cost` | `Σ` session cost | Cost tracking |
-| `overhead` | `⚡` next-request cost, `⇲` compaction cost, `⟲` restart thresholds, cold-cache cost | Cache + pricing |
-| `cache` | Prompt cache status | Cache info |
-| `stats` | Cache hit rate (the cache timer itself shows it only below 80%) | Cache hit ratio |
-| `resets` | Rate limit windows | Rate limits |
+| Section | Default | Shows | Requires Data |
+|---------|---------|-------|---------------|
+| `model` | on | Model name, price multiplier, effort level | Always |
+| `context` | on | Context bar + % + window size | Context window |
+| `overhead` | on | `⚡` next-request cost, `⇲` compaction cost, `⟲` restart thresholds, cold-cache cost | Cache + pricing |
+| `cost` | on | `Σ` session cost | Cost tracking |
+| `cache` | on | Prompt-cache timer + (optionally) hit rate | Cache info |
+| `stats` | off | Always show cache hit rate (the cache timer shows it only below 80%) | Cache hit ratio |
+| `tokens` | off | Total session tokens (mirrors context %) | Token usage |
+| `resets` | on | Rate-limit reset windows | Rate limits |
+
+Defaults are for Claude Code; see [Agent-Specific Defaults](#agent-specific-defaults).
 
 ### Threshold Settings
 
@@ -84,6 +98,8 @@
 
 ## Configuration Commands
 
+`statusline` below is the installed binary (`~/.claude/statusline/statusline`, or `bin/statusline` in a clone). It is not on your `PATH` by default; add an alias or call it by full path.
+
 ```bash
 # Show current settings
 statusline config show
@@ -111,8 +127,12 @@ statusline config thresholds overhead 5 20
 statusline config width 120
 statusline config width auto
 
-# Set margin
+# Set margin and the text between groups
 statusline config margin 2
+statusline config separator ·          # | (default), ·, •, ‖ ... or "space"
+
+# Text style (see text-styles.md)
+statusline config format glyph
 
 # Set overhead parameters
 statusline config overhead 25000 8000
@@ -125,6 +145,27 @@ statusline config dump off
 statusline config reset
 statusline config reset SECTIONS RESETS
 ```
+
+## Setting Environment Variables
+
+Any setting in the tables above can be overridden via `STATUSLINE_<KEY>`. In Claude Code, set them in the `env` block of `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "STATUSLINE_RESETS": "5h,7d,spend",
+    "STATUSLINE_CONTEXT_WARN": "60",
+    "STATUSLINE_CUSTOM_RESET": "sprint|2026-10-17 09:00"
+  }
+}
+```
+
+Two variables are not settings:
+
+| Variable | Meaning |
+|---|---|
+| `STATUSLINE_CUSTOM_RESET` | `label\|YYYY-MM-DD HH:MM` — adds a custom countdown section |
+| `CLAUDE_CONFIG_DIR` | Config directory (default `~/.claude`) |
 
 ## Environment Variable Examples
 
