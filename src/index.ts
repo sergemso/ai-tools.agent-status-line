@@ -196,6 +196,9 @@ Install options:
   --force             Replace existing statusLine
   --interval SECONDS  Refresh interval (default 15)
 
+Uninstall options:
+  --purge             Also delete saved settings (default: keep them)
+
 Run 'statusline config help' for detailed config help.
 Run 'statusline agent help' for agent command help.`);
       break;

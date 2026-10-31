@@ -6,22 +6,17 @@ This guide covers installing and configuring the status-line plugin for each sup
 
 ### Installation
 
-```bash
-# Copy the binary to your Claude Code statusline directory
-mkdir -p ~/.claude/statusline
-cp bin/statusline ~/.claude/statusline/
+Easiest: the plugin marketplace (`/plugin marketplace add sergemso/claude-code-status-line`, `/plugin install statusline@claude-code-status-line`, `/statusline:setup`) or `npx @statusline/claude-plugin install --configure`. See the [README Quickstart](../README.md#quickstart).
 
-# Configure settings.json
-cat > ~/.claude/settings.json << 'EOF'
-{
-  "statusLine": {
-    "type": "command",
-    "command": "~/.claude/statusline/statusline",
-    "refreshInterval": 15
-  }
-}
-EOF
+By hand, from a built clone — `install --configure` copies the binary and **merges** a `statusLine` entry into `~/.claude/settings.json`, keeping your other settings:
+
+```bash
+./bin/statusline install --configure          # add --force to replace a different statusLine
 ```
+
+To undo it: `~/.claude/statusline/statusline uninstall` (add `--purge` to delete your saved settings too).
+
+Do not overwrite `settings.json` wholesale; it also holds your permissions, plugins and other settings. If you edit it yourself, use an absolute path for the command (`~` is not expanded everywhere).
 
 ### Configuration Options
 
@@ -31,7 +26,7 @@ All settings can be configured via `settings.json` or environment variables:
 {
   "statusLine": {
     "type": "command",
-    "command": "~/.claude/statusline/statusline",
+    "command": "/home/you/.claude/statusline/statusline",
     "refreshInterval": 15
   }
 }
