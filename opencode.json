@@ -1,4 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": ["@statusline/opencode-plugin@1.1.0"]
+  "plugins": ["@statusline/opencode-plugin@1.1.1"]
 }
