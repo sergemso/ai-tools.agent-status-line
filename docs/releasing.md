@@ -4,7 +4,7 @@ Releases are automated per package with [release-please](https://github.com/goog
 
 | Package | Path | Tag |
 |---|---|---|
-| `claude-code-status-line` (CLI + Claude Code plugin + Cursor) | `.` | `claude-code-vX.Y.Z` |
+| `@statusline/claude-plugin` (CLI + Claude Code plugin + Cursor) | `.` | `claude-code-vX.Y.Z` |
 | `@statusline/core` | `packages/core` | `core-vX.Y.Z` |
 | `@statusline/opencode-plugin` | `packages/opencode-plugin` | `opencode-plugin-vX.Y.Z` |
 
