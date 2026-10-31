@@ -75,7 +75,7 @@ Every indicator and the exact maths are in the [README](../README.md#reading-the
 ## Configure
 
 - `/statusline:config` in Claude Code, or `~/.claude/statusline/statusline config wizard` in a terminal (measures your real starting context, previews styles at several widths).
-- One-off changes: `statusline config format glyph`, `config sections only model context cost`, `config separator ·`, `config resets 5h,7d`, `config width 100`. See the [README](../README.md#configuration) for the full list and the `STATUSLINE_*` environment variables.
+- One-off changes: `statusline config format glyph`, `config sections only model context cost`, `config separator ·`, `config resets 5h,7d`, `config width 100`. See the [configuration reference](configuration.md) for the full list and the `STATUSLINE_*` environment variables.
 - Settings live in `~/.claude/statusline/config`; updates never touch it.
 
 ## Updating
