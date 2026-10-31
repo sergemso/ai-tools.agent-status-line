@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/sergemso/ai-tools.agent-status-line/compare/claude-code-v1.1.4...claude-code-v1.2.0) (2026-10-31)
+
+
+### Features
+
+* ship the Claude Code plugin in the npm package and add uninstall ([86894ae](https://github.com/sergemso/ai-tools.agent-status-line/commit/86894aed9d801483962a725cc17c11453e744998))
+* ship the Claude Code plugin in the npm package and add uninstall ([a4be9b2](https://github.com/sergemso/ai-tools.agent-status-line/commit/a4be9b28f0e869c79508c887b9004e9bb7fcccf6))
+
 ## [1.1.4](https://github.com/sergemso/ai-tools.agent-status-line/compare/claude-code-v1.1.3...claude-code-v1.1.4) (2026-10-31)
 
 
