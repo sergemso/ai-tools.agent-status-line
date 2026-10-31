@@ -20,12 +20,12 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25
 
 ## Quickstart
 
-**Requirements:** Node.js ≥ 18. Only the one-shot script and manual installs need `git` (they build from source); the marketplace and npm installs ship a prebuilt binary and need only Node. No `jq`, `curl` or `awk`.
+**Requirements:** Node.js ≥ 18. Only the Claude Code one-shot script and installs from a clone need `git` (they build from source); the marketplace, npm and Cursor installs ship a prebuilt binary and need only Node. No `jq`, `curl` or `awk`.
 
 | Agent | Recommended | Alternatives |
 |---|---|---|
 | **Claude Code** | [Plugin marketplace](#claude-code--plugin-marketplace-recommended): auto-updates, slash commands | [npm](#claude-code--npm-pinned-no-auto-update) · [one-shot script](#claude-code--one-shot-script) · [from a clone](docs/claude-code.md#install) |
-| **Cursor** | [One-shot script](#cursor) | [from a clone](docs/cursor.md#install) |
+| **Cursor** | [`npx @statusline/claude-plugin install`](#cursor) | [from a clone](docs/cursor.md#install) |
 | **OpenCode** (TUI) | `opencode plugin add @statusline/opencode-plugin` ([details](#opencode-tui)) | [one-shot script](#opencode-tui) |
 
 Full guides with screenshots, options and troubleshooting: **[Claude Code](docs/claude-code.md) · [Cursor](docs/cursor.md) · [OpenCode](docs/opencode.md)**.
@@ -77,10 +77,10 @@ New to the symbols? Read [In 30 seconds](#in-30-seconds) next.
 ### Cursor
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash
+npx @statusline/claude-plugin install
 ```
 
-Builds the binary, copies it to `~/.claude/statusline/`, and prints the JSON snippet to add to Cursor's `settings.json` (`~/.config/Cursor/User/settings.json` on Linux, `~/Library/Application Support/Cursor/User/settings.json` on macOS, `%APPDATA%\Cursor\User\settings.json` on Windows). Restart Cursor after. Cursor has no public plugin registry for status lines, so there is no marketplace route.
+Copies the prebuilt binary to `~/.claude/statusline/` (no git, no build) and prints the JSON snippet to add to Cursor's `settings.json` (`~/.config/Cursor/User/settings.json` on Linux, `~/Library/Application Support/Cursor/User/settings.json` on macOS, `%APPDATA%\Cursor\User\settings.json` on Windows). Restart Cursor after. Cursor has no public plugin registry for status lines, so there is no marketplace route. (`curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash` does the same and also prints the settings locations.)
 
 ### OpenCode (TUI)
 
@@ -273,7 +273,7 @@ The binary auto-detects which coding agent is feeding it data and adapts the out
 | Agent | Status | How it works | Install |
 |---|---|---|---|
 | **Claude Code** | ✅ Built-in | External command: Claude Code pipes JSON to stdin, the binary returns an ANSI string. Configured via `settings.json` `statusLine.command`. | [Quickstart](#claude-code--plugin-marketplace-recommended) · [guide](docs/claude-code.md) |
-| **Cursor** | ✅ Built-in | Same external-command contract, with Cursor-specific fields (`render_width_chars`, `autorun`, `max_mode`, `param_summary`). | [One-shot script](#cursor), then add the JSON snippet to Cursor's settings · [guide](docs/cursor.md) |
+| **Cursor** | ✅ Built-in | Same external-command contract, with Cursor-specific fields (`render_width_chars`, `autorun`, `max_mode`, `param_summary`). | [`npx` install](#cursor), then add the JSON snippet to Cursor's settings · [guide](docs/cursor.md) |
 | **OpenCode** | ✅ Plugin (`@statusline/opencode-plugin`) | OpenCode v2 has no external-command contract; it loads in-process TUI plugins that claim a footer slot. TUI mode only — not ACP. | `opencode plugin add @statusline/opencode-plugin` · [guide](docs/opencode.md) |
 
 **Add a new agent:** implement the `StatusLineAdapter` interface (see [`docs/adding-adapters.md`](docs/adding-adapters.md)). Detection is automatic via `canHandle()`.
@@ -292,7 +292,7 @@ Per-agent steps are in each guide: [Claude Code](docs/claude-code.md#updating) �
 | Agent | Update | Uninstall |
 |---|---|---|
 | Claude Code | Marketplace: `/plugin marketplace update claude-code-status-line`, then `/reload-plugins`. npm: `npx @statusline/claude-plugin@latest install --configure`. Script or clone: `git pull && npm install`. | `/statusline:uninstall` **first** (disabling the plugin does not stop the status line), then `/plugin uninstall statusline@claude-code-status-line`. |
-| Cursor | Re-run the install script. | Remove the `statusLine` entry from Cursor's settings; delete `~/.claude/statusline/`. |
+| Cursor | `npx @statusline/claude-plugin@latest install` again. | Remove the `statusLine` entry from Cursor's settings; delete `~/.claude/statusline/`. |
 | OpenCode | `opencode plugin add @statusline/opencode-plugin` again, or pin a version in `opencode.json`. | Remove `@statusline/opencode-plugin` from `~/.config/opencode/opencode.json`. |
 
 Your settings live in `~/.claude/statusline/config`; updates never touch them.

@@ -21,10 +21,10 @@ Cursor's payload carries the model, the context window and token totals, but not
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash
+npx @statusline/claude-plugin install
 ```
 
-This clones the repo to `~/.claude/claude-code-status-line`, builds it, copies the binary to `~/.claude/statusline/statusline` and prints a JSON snippet. Add it to Cursor's configuration, then restart Cursor:
+This runs the published, prebuilt package (Node ≥ 18, no git or build), copies the binary to `~/.claude/statusline/statusline` and prints a JSON snippet. It does not touch Claude Code's `settings.json` (that needs `--configure`). Add the snippet to Cursor's configuration, then restart Cursor. A wrapper that does the same and also prints the settings locations: `curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash`.
 
 ```json
 {
@@ -37,9 +37,9 @@ This clones the repo to `~/.claude/claude-code-status-line`, builds it, copies t
 
 Use an absolute path. There is no marketplace route: Cursor has no public plugin registry for status lines.
 
-> **Unverified — where the entry goes.** This repo points at two places and I have not checked either against a running Cursor: the install script says Cursor's `settings.json` (`~/.config/Cursor/User/settings.json` on Linux, `~/Library/Application Support/Cursor/User/settings.json` on macOS, `%APPDATA%\Cursor\User\settings.json` on Windows), while [`agent-input-formats.md`](agent-input-formats.md) documents `~/.cursor/cli-config.json` (with `padding`, `updateIntervalMs`, `timeoutMs`), which is presumably the Cursor CLI's file. If the line does not appear, try the other one and please report which worked.
+> **Unverified — where the entry goes.** This repo points at two places and I have not checked either against a running Cursor: the install script and the README say Cursor's `settings.json` (`~/.config/Cursor/User/settings.json` on Linux, `~/Library/Application Support/Cursor/User/settings.json` on macOS, `%APPDATA%\Cursor\User\settings.json` on Windows), while [`agent-input-formats.md`](agent-input-formats.md) documents `~/.cursor/cli-config.json` (with `padding`, `updateIntervalMs`, `timeoutMs`), which is presumably the Cursor CLI's file. If the line does not appear, try the other one and please report which worked.
 
-Manual route: `git clone`, `npm install`, then copy `bin/statusline` to `~/.claude/statusline/` and add the entry above.
+From a clone instead: `npm install`, then copy `bin/statusline` to `~/.claude/statusline/` and add the entry above.
 
 ## Check it works
 
@@ -52,7 +52,7 @@ echo '{"session_id":"t","render_width_chars":100,"autorun":false,"model":{"id":"
 
 ## Configure, update, remove
 
-Settings are shared with Claude Code (`~/.claude/statusline/config`), so `statusline config format glyph`, `config separator ·` and the wizard work the same way; sections that need data Cursor does not send are simply absent. Update by re-running the install script. Remove the `statusLine` entry from Cursor's configuration and delete `~/.claude/statusline/`.
+Settings are shared with Claude Code (`~/.claude/statusline/config`), so `statusline config format glyph`, `config separator ·` and the wizard work the same way; sections that need data Cursor does not send are simply absent. Update by re-running the install command (`npx @statusline/claude-plugin@latest install`). Remove the `statusLine` entry from Cursor's configuration and delete `~/.claude/statusline/`.
 
 ## Troubleshooting
 

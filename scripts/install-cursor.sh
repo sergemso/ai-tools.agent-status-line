@@ -7,8 +7,8 @@
 # Cursor uses the same external-command statusLine contract as Claude Code.
 # Cursor's own plugin marketplace is team/enterprise-only (no public registry
 # for status-line plugins), so the install path is:
-#   1. Clone + build the shared binary
-#   2. Copy it to a stable location
+#   1. Run the published @statusline/claude-plugin package (prebuilt, needs only Node)
+#   2. It copies the binary to ~/.claude/statusline/
 #   3. Print the JSON snippet to add to Cursor's settings.json
 #
 # Cursor settings.json location:
@@ -18,35 +18,20 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/sergemso/ai-tools.agent-status-line.git"
-INSTALL_DIR="${STATUSLINE_INSTALL_DIR:-$HOME/.claude/claude-code-status-line}"
-BRANCH="${STATUSLINE_BRANCH:-main}"
+echo "→ Installing @statusline/claude-plugin for Cursor"
 
-echo "→ Installing claude-code-status-line for Cursor"
+command -v npx >/dev/null 2>&1 || { echo "✗ Node.js >= 18 (with npx) is required."; exit 1; }
 
-# 1. Clone/update + build (shared with Claude Code installer)
-if [ -d "$INSTALL_DIR/.git" ]; then
-  cd "$INSTALL_DIR"
-  git fetch origin "$BRANCH" --quiet
-  git checkout "$BRANCH" --quiet
-  git reset --hard "origin/$BRANCH" --quiet
-else
-  git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
-  cd "$INSTALL_DIR"
-fi
-
-echo "→ Installing dependencies and building..."
-npm install --silent 2>&1 | tail -3 || {
-  echo "✗ npm install failed."
+# 1-2. Run the prebuilt package; it copies the binary to a stable location.
+# (Without --configure it leaves Claude Code's settings.json alone.)
+npx --yes @statusline/claude-plugin@latest install >/dev/null || {
+  echo "✗ npx @statusline/claude-plugin install failed."
   exit 1
 }
 
-# 2. Copy the binary to a stable location
-DEST_DIR="$HOME/.claude/statusline"
-mkdir -p "$DEST_DIR"
-cp "$INSTALL_DIR/bin/statusline" "$DEST_DIR/statusline"
-chmod +x "$DEST_DIR/statusline"
+DEST_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/statusline"
 BINARY_PATH="$DEST_DIR/statusline"
+[ -x "$BINARY_PATH" ] || { echo "✗ Expected binary at $BINARY_PATH was not created."; exit 1; }
 
 echo ""
 echo "✓ Binary installed at: $BINARY_PATH"
@@ -68,4 +53,4 @@ echo "After saving, restart Cursor. The status line will appear in the footer."
 echo ""
 echo "Note: Cursor's plugin marketplace is team/enterprise-only and has no"
 echo "      statusLine hook, so there's no marketplace install path — only"
-echo "      this script or manual setup (see README.md → Manual setup)."
+echo "      this script or copying the binary yourself (see docs/cursor.md)."

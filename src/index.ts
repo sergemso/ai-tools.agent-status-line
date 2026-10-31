@@ -138,9 +138,7 @@ async function main() {
         }
       }
 
-      if (configure) {
-        await install({ configure, force, interval });
-      }
+      await install({ configure, force, interval });
       break;
     }
 

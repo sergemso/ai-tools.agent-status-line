@@ -1,7 +1,7 @@
 // End-to-end integration tests for full pipeline - using CLI
 
 import { test, expect, describe, afterAll } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { spawnSync } from "child_process";
@@ -245,5 +245,23 @@ describe("End-to-End - Performance", () => {
     
     // Should complete in less than 5 seconds (including price loading)
     expect(elapsed).toBeLessThan(5000);
+  });
+});
+describe("End-to-End - install", () => {
+  test("`install` copies the binary and leaves settings.json alone without --configure", () => {
+    const env = isolatedEnv();
+    try {
+      const result = spawnSync("node", [BIN_PATH, "install"], {
+        encoding: "utf-8",
+        cwd: PROJECT_ROOT,
+        env: env.env,
+      });
+      expect(result.status).toBe(0);
+      expect(existsSync(join(env.dir, "statusline", "statusline"))).toBe(true);
+      expect(existsSync(join(env.dir, "settings.json"))).toBe(false);
+      expect(result.stdout).toContain("Cursor");
+    } finally {
+      env.cleanup();
+    }
   });
 });
