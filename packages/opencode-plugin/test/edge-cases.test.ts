@@ -12,7 +12,10 @@
 
 import { describe, it, expect } from "vitest";
 import { adaptSession, type CoreRenderInput } from "../src/adapter.js";
-import { renderStatusLine } from "../src/render.js";
+import {
+  FOOTER_OPENCODE_SECTIONS,
+  renderStatusLine,
+} from "../src/render.js";
 import { ansiToSpans, spansToPlainText } from "../src/ansi.js";
 import type { SessionInfo, ModelInfo, ModelRef, TokenUsageInfo } from "../src/types.js";
 
@@ -433,3 +436,26 @@ function stripAnsi(str: string): string {
   // eslint-disable-next-line no-control-regex
   return str.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "");
 }
+
+describe("renderStatusLine — section defaults", () => {
+  const input = {
+    ...adaptSession(makeSession(), { resolveModel: resolveDefaultModel }),
+    worktree: { name: "master" },
+  } as CoreRenderInput;
+  const plain = (sections?: string | null) =>
+    spansToPlainText(
+      ansiToSpans(renderStatusLine(input, { width: 200, sections })),
+    );
+
+  it("omits the worktree by default", () => {
+    expect(plain()).not.toContain("master");
+  });
+
+  it("shows the worktree only when asked for", () => {
+    expect(plain("model,worktree")).toContain("master");
+  });
+
+  it("drops context and cost in the footer set", () => {
+    expect(plain(FOOTER_OPENCODE_SECTIONS)).not.toContain("%");
+  });
+});
