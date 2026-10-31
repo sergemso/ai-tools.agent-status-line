@@ -1,7 +1,7 @@
 {
   "name": "@statusline/core",
   "version": "1.1.1",
-  "description": "Core library for section-priority-based status line rendering",
+  "description": "Core library for the agent status line: section-priority layout, Unicode-aware width and CLI, OpenCode, VS Code and Neovim renderers",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,9 +19,13 @@
   },
   "keywords": [
     "statusline",
+    "status-line",
+    "claude-code",
+    "cursor",
+    "opencode",
     "cli",
     "rendering",
-    "priority"
+    "tui"
   ],
   "author": "S. Strebulaev",
   "license": "MIT",
@@ -48,5 +52,8 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
