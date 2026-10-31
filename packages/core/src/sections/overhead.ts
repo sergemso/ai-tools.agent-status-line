@@ -118,7 +118,7 @@ function renderOverheadCost(overhead: any, config?: any, fmt: ItemFormat = "glyp
   if (costCents >= crit) color = "\x1b[31m"; // RED
   else if (costCents >= warn) color = "\x1b[33m"; // YELLOW
 
-  return `${color}${{ words: "next call ", short: "next ", glyph: "⚡", ascii: "nx " }[fmt]}${fmt === "ascii" ? asciiCost(formatOverheadCost(cost)) : formatOverheadCost(cost)}\x1b[0m`;
+  return `${color}${{ words: "next call ", short: "next ", glyph: "⚡ ", ascii: "nx " }[fmt]}${fmt === "ascii" ? asciiCost(formatOverheadCost(cost)) : formatOverheadCost(cost)}\x1b[0m`;
 }
 
 /** Format overhead cost as $X.XX */

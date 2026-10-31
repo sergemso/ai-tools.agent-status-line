@@ -28,7 +28,7 @@ const FORMATS = [
   { id: "auto", about: "most readable style that fits the width (default)" },
   { id: "words", about: 'always plain words: "next call 3.6¢"' },
   { id: "short", about: 'always short words: "next 3.6¢"' },
-  { id: "glyph", about: 'always compact glyphs: "⚡3.6¢"' },
+  { id: "glyph", about: 'always compact glyphs: "⚡ 3.6¢"' },
   { id: "ascii", about: 'plain ASCII only: "nx 3.6c"' },
 ];
 
