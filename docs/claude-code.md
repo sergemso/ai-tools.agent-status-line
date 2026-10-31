@@ -8,11 +8,11 @@ The status line runs as an external command: Claude Code pipes a JSON payload to
 
 ## Install
 
-Pick one. Requirements: Node.js ≥ 18; the marketplace and script routes also need `git`.
+Pick one. Requirements: Node.js ≥ 18; only the script and clone routes also need `git`.
 
 | Route | Commands | Updates |
 |---|---|---|
-| **Plugin marketplace** (recommended) | `/plugin marketplace add sergemso/claude-code-status-line`<br>`/plugin install statusline@claude-code-status-line`<br>`/statusline:setup` | The SessionStart hook rebuilds the binary when the plugin updates |
+| **Plugin marketplace** (recommended) | `/plugin marketplace add sergemso/claude-code-status-line`<br>`/plugin install statusline@claude-code-status-line`<br>`/statusline:setup` | Installs the prebuilt `@statusline/claude-plugin` from npm; updates with the marketplace |
 | **npm** | `npx @statusline/claude-plugin install --configure` | Run it again (`@latest`, or `@<version>` to pin) |
 | **One-shot script** | `curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-claude-code.sh \| bash` | `git pull && npm install` in `~/.claude/claude-code-status-line` |
 | **From a clone** | `npm install && ./bin/statusline install --configure` | Pull and rebuild |

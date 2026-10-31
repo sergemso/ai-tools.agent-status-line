@@ -18,7 +18,7 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25
 
 ## Quickstart
 
-**Requirements:** Node.js ≥ 18. The marketplace and script installs also need `git` (they build from source on first run); the npm install ships a prebuilt binary and needs only Node. No `jq`, `curl` or `awk`.
+**Requirements:** Node.js ≥ 18. Only the one-shot script and manual installs need `git` (they build from source); the marketplace and npm installs ship a prebuilt binary and need only Node. No `jq`, `curl` or `awk`.
 
 | Agent | Recommended | Alternatives |
 |---|---|---|
