@@ -6,12 +6,12 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts", "test/**/*.test.ts", "packages/**/*.test.ts"],
     globals: true,
-    resolve: {
-      alias: {
-        "shared": resolve(__dirname, "src/shared"),
-        "utils": resolve(__dirname, "src/utils"),
-        "adapters": resolve(__dirname, "src/adapters"),
-      },
+  },
+  resolve: {
+    alias: {
+      "shared": resolve(__dirname, "src/shared"),
+      "utils": resolve(__dirname, "src/utils"),
+      "adapters": resolve(__dirname, "src/adapters"),
     },
   },
 });

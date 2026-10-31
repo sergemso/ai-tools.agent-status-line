@@ -152,3 +152,61 @@ export async function install(options: InstallOptions): Promise<void> {
 
   printOtherAgents(executablePath);
 }
+
+export interface UninstallOptions {
+  /** Also delete the saved config file (default: keep it). */
+  purge: boolean;
+  /** Override the directory the binary was copied to (defaults to ~/.claude/statusline). */
+  destDir?: string;
+}
+
+/**
+ * Undo `install --configure`: drop the statusLine entry if it still points
+ * at our copied binary, then delete that binary. A statusLine that points
+ * somewhere else is left alone.
+ */
+export async function uninstall(options: UninstallOptions): Promise<void> {
+  const claudeConfigDir = getClaudeConfigDir();
+  const destDir = options.destDir ?? join(claudeConfigDir, "statusline");
+  const binary = join(destDir, "statusline");
+  const settingsPath = join(claudeConfigDir, "settings.json");
+
+  let settings: Record<string, any> | null = null;
+  try {
+    settings = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
+  } catch {
+    // no settings.json, or unreadable: nothing to unwire
+  }
+
+  if (settings?.statusLine) {
+    if (settings.statusLine.command === binary) {
+      delete settings.statusLine;
+      const tmp = `${settingsPath}.${Date.now()}.tmp`;
+      await fs.writeFile(tmp, JSON.stringify(settings, null, 2));
+      await fs.rename(tmp, settingsPath);
+      console.log(`✓ Removed statusLine from ${settingsPath}`);
+    } else {
+      console.log(
+        `statusLine points to ${settings.statusLine.command}, not ${binary}; left unchanged.`,
+      );
+    }
+  } else {
+    console.log(`No statusLine entry in ${settingsPath}.`);
+  }
+
+  try {
+    await fs.rm(binary);
+    console.log(`✓ Deleted ${binary}`);
+  } catch {
+    console.log(`No binary at ${binary}.`);
+  }
+
+  if (options.purge) {
+    await fs.rm(join(destDir, "config"), { force: true });
+    console.log(`✓ Deleted ${join(destDir, "config")}`);
+    // rmdir only succeeds when the directory is empty
+    await fs.rmdir(destDir).catch(() => {});
+  } else {
+    console.log(`Kept your settings in ${join(destDir, "config")} (use --purge to delete).`);
+  }
+}

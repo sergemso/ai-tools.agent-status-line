@@ -17,6 +17,7 @@ fi
 **Install + configure:**
 
 ```bash
+chmod +x "${CLAUDE_PLUGIN_ROOT}/bin/statusline"
 "${CLAUDE_PLUGIN_ROOT}/bin/statusline" install --configure $ARGUMENTS
 ```
 

@@ -3,7 +3,7 @@
 import { generateStatusLine } from "./statusline.js";
 import { runConfig } from "./config.js";
 import { refreshPrices } from "./refresh-prices.js";
-import { install } from "./install.js";
+import { install, uninstall } from "./install.js";
 import { getClaudeConfigDir } from "utils/config-utils.js";
 import { adapterRegistry, AgentType } from "adapters/index.js";
 
@@ -144,6 +144,16 @@ async function main() {
       break;
     }
 
+    case "uninstall": {
+      const unknown = args.filter((a) => a !== "--purge");
+      if (unknown.length > 0) {
+        console.error(`unknown option: ${unknown[0]}`);
+        process.exit(1);
+      }
+      await uninstall({ purge: args.includes("--purge") });
+      break;
+    }
+
     case "agent": {
       await runAgentCommand(args);
       break;
@@ -161,6 +171,7 @@ Commands:
   config <subcommand> Manage settings
   refresh-prices      Fetch and cache model prices
   install             Install/copy scripts and optionally configure settings.json
+  uninstall           Remove the statusLine entry and the copied binary (--purge also deletes config)
   agent <subcommand>  Manage multi-agent support
 
 Config subcommands:

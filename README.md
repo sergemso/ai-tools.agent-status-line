@@ -30,7 +30,7 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25
 /statusline:setup
 ```
 
-`/statusline:setup` builds the binary, copies it to `~/.claude/statusline/statusline` and writes the `statusLine` entry into `~/.claude/settings.json` (it refuses to overwrite a different status line unless you add `--force`). It then offers to walk you through customising. A SessionStart hook (`scripts/bootstrap.sh`) rebuilds the binary when the plugin updates. **Restart Claude Code** after the first install.
+`/statusline:setup` builds the binary, copies it to `~/.claude/statusline/statusline` and writes the `statusLine` entry into `~/.claude/settings.json` (it refuses to overwrite a different status line unless you add `--force`). It then offers to walk you through customising. (`/statusline:uninstall` undoes it.) A SessionStart hook (`scripts/bootstrap.sh`) rebuilds the binary when the plugin updates. **Restart Claude Code** after the first install.
 
 ### Claude Code — npm (pinned, no auto-update)
 
@@ -334,7 +334,9 @@ Your settings live in `~/.claude/statusline/config`, which no update touches.
 
 ### Uninstalling
 
-- **Claude Code:** remove the `statusLine` block from `~/.claude/settings.json`. If you used the marketplace: `/plugin uninstall statusline@claude-code-status-line` and `/plugin marketplace remove claude-code-status-line`. Optionally delete `~/.claude/statusline/` (binary and config) and `~/.claude/model-prices.json`.
+Disabling or uninstalling the Claude Code plugin does **not** stop the status line: it runs from the `statusLine` entry in your own `settings.json` and a copied binary. Undo those first:
+
+- **Claude Code:** `/statusline:uninstall` (or `~/.claude/statusline/statusline uninstall`) removes the `statusLine` entry and the copied binary, and keeps your saved settings; add `--purge` to delete those too. Then, if you used the marketplace: `/plugin uninstall statusline@claude-code-status-line` and `/plugin marketplace remove claude-code-status-line`. Optionally delete `~/.claude/model-prices.json`.
 - **Cursor:** remove the `statusLine` entry from Cursor's `settings.json`; delete `~/.claude/statusline/`.
 - **OpenCode:** remove `@statusline/opencode-plugin` from `~/.config/opencode/opencode.json`.
 

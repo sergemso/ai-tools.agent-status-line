@@ -20,6 +20,17 @@ BINARY="$PLUGIN_ROOT/bin/statusline"
 DEST_DIR="$CONFIG_DIR/statusline"
 DEST_BINARY="$DEST_DIR/statusline"
 
+# Prebuilt package (installed from npm): there are no sources to build, so
+# just keep the copy Claude Code's settings point at in step with the plugin.
+if [ ! -f "$PLUGIN_ROOT/src/index.ts" ]; then
+  chmod +x "$BINARY" 2>/dev/null || true
+  if [ -x "$BINARY" ] && ! cmp -s "$BINARY" "$DEST_BINARY" 2>/dev/null; then
+    mkdir -p "$DEST_DIR"
+    cp "$BINARY" "$DEST_BINARY" && chmod +x "$DEST_BINARY"
+  fi
+  exit 0
+fi
+
 # Fast path: binary exists, is executable, and is newer than source → bail out.
 if [ -x "$BINARY" ] && [ -x "$DEST_BINARY" ] && \
    [ "$BINARY" -nt "$PLUGIN_ROOT/src/index.ts" ]; then
