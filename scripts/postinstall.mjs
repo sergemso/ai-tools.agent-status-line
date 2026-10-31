@@ -20,6 +20,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = join(__filename, "..");
 const root = join(__dirname, "..");
 
+// Installed from the npm registry: the tarball ships a prebuilt bin/ and dist/
+// but no sources, so there is nothing to build.
+if (!existsSync(join(root, "src", "index.ts"))) {
+  process.exit(0);
+}
+
 function isFresh(path) {
   return !existsSync(path);
 }
