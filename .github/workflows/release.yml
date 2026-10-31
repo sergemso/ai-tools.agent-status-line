@@ -5,7 +5,9 @@ name: Release
 #
 # Usage:
 #   1. Bump version in all three package.json files (root, packages/core,
-#      packages/opencode-plugin) — they must match.
+#      packages/opencode-plugin) and in .claude-plugin/plugin.json — they
+#      must match (Claude Code only offers a plugin update when plugin.json's
+#      version changes).
 #   2. Commit: "chore(release): vX.Y.Z"
 #   3. Tag and push:
 #        git tag vX.Y.Z
@@ -53,10 +55,12 @@ jobs:
           ROOT_VERSION=$(node -p "require('./package.json').version")
           CORE_VERSION=$(node -p "require('./packages/core/package.json').version")
           OPENCODE_VERSION=$(node -p "require('./packages/opencode-plugin/package.json').version")
+          PLUGIN_VERSION=$(node -p "require('./.claude-plugin/plugin.json').version")
           echo "Root:      $ROOT_VERSION"
           echo "Core:      $CORE_VERSION"
           echo "OpenCode:  $OPENCODE_VERSION"
-          if [ "$ROOT_VERSION" != "$CORE_VERSION" ] || [ "$ROOT_VERSION" != "$OPENCODE_VERSION" ]; then
+          echo "Claude plugin: $PLUGIN_VERSION"
+          if [ "$ROOT_VERSION" != "$CORE_VERSION" ] || [ "$ROOT_VERSION" != "$OPENCODE_VERSION" ] || [ "$ROOT_VERSION" != "$PLUGIN_VERSION" ]; then
             echo "ERROR: package versions are out of sync"
             exit 1
           fi
