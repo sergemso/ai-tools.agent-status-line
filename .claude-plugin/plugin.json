@@ -1,6 +1,6 @@
 {
   "name": "statusline",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Agent status line — model, context, session cost, next-request and restart costs, cache timer, rate-limit resets, for Claude Code, Cursor and OpenCode.",
   "author": {
     "name": "sergemso"
