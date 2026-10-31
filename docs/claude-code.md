@@ -6,15 +6,21 @@ The status line runs as an external command: Claude Code pipes a JSON payload to
 
 *One session at four terminal widths: readable words, then shorter forms, then glyphs, then items are dropped lowest-priority first. These images are real output of the built binary (`npm run docs:images`), not screenshots of Claude Code.*
 
+![The status line in a real Claude Code session at 140 columns](images/live-claude-code.svg)
+
+![The same real session at 80 columns: the reset windows are dropped](images/live-claude-code-80.svg)
+
+*Captured from Claude Code 2.1.308 in a tmux pane (after one prompt), then rendered to SVG with `scripts/render-live-capture.mjs`. The separator is the `•` from the author's saved settings.*
+
 ## Install
 
-Pick one. Requirements: Node.js ≥ 18; the marketplace and script routes also need `git`.
+Pick one. Requirements: Node.js ≥ 18; only the script and clone routes also need `git`.
 
 | Route | Commands | Updates |
 |---|---|---|
-| **Plugin marketplace** (recommended) | `/plugin marketplace add sergemso/claude-code-status-line`<br>`/plugin install statusline@claude-code-status-line`<br>`/statusline:setup` | The SessionStart hook rebuilds the binary when the plugin updates |
+| **Plugin marketplace** (recommended) | `/plugin marketplace add sergemso/ai-tools.agent-status-line`<br>`/plugin install statusline@claude-code-status-line`<br>`/statusline:setup` | Installs the prebuilt `@statusline/claude-plugin` from npm; updates with the marketplace |
 | **npm** | `npx @statusline/claude-plugin install --configure` | Run it again (`@latest`, or `@<version>` to pin) |
-| **One-shot script** | `curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-claude-code.sh \| bash` | `git pull && npm install` in `~/.claude/claude-code-status-line` |
+| **One-shot script** | `curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-claude-code.sh \| bash` | `git pull && npm install` in `~/.claude/claude-code-status-line` |
 | **From a clone** | `npm install && ./bin/statusline install --configure` | Pull and rebuild |
 
 Restart Claude Code afterwards.

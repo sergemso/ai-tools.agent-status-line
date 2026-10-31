@@ -6,7 +6,10 @@
     {
       "name": "statusline",
       "description": "Agent status line: model (price multiplier) | context | session efficiency (cost, next-request, compaction, restart thresholds) | prompt-cache timer | rate-limit resets",
-      "source": "./"
+      "source": {
+        "source": "npm",
+        "package": "@statusline/claude-plugin"
+      }
     }
   ]
 }

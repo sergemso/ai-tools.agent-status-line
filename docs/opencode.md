@@ -6,6 +6,10 @@ OpenCode (v2, TUI mode) has no external status-line command. Instead it loads in
 
 *Real output of the plugin's renderer. The grey text after the first two lines is OpenCode's own footer, drawn illustratively; this is not a screenshot of OpenCode.*
 
+![The plugin's footer line in a real OpenCode 2.2.5 session](images/live-opencode.svg)
+
+*Captured from OpenCode 2.2.5 (`--standalone`, tmux pane, free Big Pickle model, after one message), then rendered to SVG with `scripts/render-live-capture.mjs`. `Big Pickle | 7.2k` is the plugin; `6.8K (3%)` and `ctrl+p commands` are OpenCode's own footer.*
+
 **TUI mode only.** In ACP mode (`opencode acp`) the editor draws its own UI and there is no footer to claim.
 
 ## Install
@@ -23,14 +27,15 @@ That adds the package to `~/.config/opencode/opencode.json`:
 }
 ```
 
-Run `opencode`; the line appears in the footer. Pin a version with `@statusline/opencode-plugin@1.1.2`. `scripts/install-opencode.sh` does the same, with a build-from-source fallback.
+Run `opencode`; the line appears in the footer. Pin a version with `@statusline/opencode-plugin@<version>`. `scripts/install-opencode.sh` does the same.
 
 ## Placement and sections
 
-OpenCode already shows context use, cost and `ctrl+p commands` on the right of its footer, so by default the plugin renders only `model,tokens,resets` there and leaves a two-column gap. Options go in the plugin entry:
+OpenCode already shows context use, cost and `ctrl+p commands` on the right of its footer, so by default the plugin renders only `model,tokens,resets` there and leaves a two-column gap. Options go in the plugin entry in **`~/.config/opencode/cli.json`**, not `opencode.json`:
 
 ```jsonc
 {
+  "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
       "package": "@statusline/opencode-plugin",
@@ -45,6 +50,10 @@ OpenCode already shows context use, cost and `ctrl+p commands` on the right of i
 | `replace` (default) | Takes over the footer status slot | `model,tokens,resets` |
 | `append` | Adds to the footer status slot | `model,tokens,resets` |
 | `composer-top` | Its own full-width row above the prompt | `model,context,cost,tokens,resets` |
+
+> **Good to know (checked on OpenCode 2.2.5).** Options written in `opencode.json` are ignored; put them in `cli.json`. `placement: "composer-top"` draws nothing in 1.1.2 and needs a release newer than 1.1.2 (the next release). `replace` and `composer-top` were checked; `append` was not.
+
+![The line on its own row above the prompt with placement composer-top, in OpenCode 2.2.5](images/live-opencode-composer-top.svg)
 
 `sections` overrides the defaults in any placement. Names: `model`, `context`, `cost`, `tokens`, `overhead`, `cache`, `stats`, `resets`, `vim`, `worktree`. The git branch (`worktree`) is never on by default. An unrecognised `placement` falls back to `replace`.
 
@@ -64,12 +73,16 @@ OpenCode already shows context use, cost and `ctrl+p commands` on the right of i
 
 OpenCode has no rate-limit payload, so for **`zai`** and **`zai-cn`** the plugin reads the API key OpenCode saved and fetches the provider's usage endpoint, refreshing every 5 minutes and keeping the last good value through failures. Other providers show no reset windows.
 
+## Update and remove
+
+Update: run `opencode plugin add @statusline/opencode-plugin` again, or pin a version in `opencode.json`. Remove: delete `@statusline/opencode-plugin` from `~/.config/opencode/opencode.json`.
+
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
 | No line | Use TUI mode (`opencode`), not `opencode acp`; check the plugin is in `opencode.json`. |
-| Line touches or repeats OpenCode's own footer | Use 1.1.2 or newer, or set `"placement": "composer-top"`. |
+| Line touches or repeats OpenCode's own footer | Use 1.1.2 or newer. `"placement": "composer-top"` (own row) needs a release newer than 1.1.2; on 1.1.2 it draws nothing. |
 | `context.data.listen is undefined` | The TUI entry was loaded as the server part; keep the package's `./tui` export intact. |
 | No reset windows | Only `zai` / `zai-cn` are supported. |
 

@@ -18,6 +18,8 @@ Releases are automated per package with [release-please](https://github.com/goog
 4. The `publish` job in `.github/workflows/release.yml` builds, tests, and publishes
    only the released packages to npm (core first). A GitHub Release is created per tag.
 
+The Claude Code marketplace entry installs `@statusline/claude-plugin` from npm, so merging its Release PR is also what ships a plugin update to marketplace users.
+
 Releasing `@statusline/core` also opens a bump for its dependents (`node-workspace`).
 
 ## Setup

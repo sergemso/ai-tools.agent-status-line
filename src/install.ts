@@ -128,7 +128,7 @@ function printOtherAgents(executablePath: string): void {
   console.log("");
   console.log("  OpenCode — add to ~/.config/opencode/opencode.json:");
   console.log('    "plugins": ["@statusline/opencode-plugin"]');
-  console.log("    (build it first: npm run build --workspace=@statusline/opencode-plugin)");
+  console.log("    (or run: opencode plugin add @statusline/opencode-plugin)");
   console.log("");
   console.log("  See README.md → Agents for details.");
 }

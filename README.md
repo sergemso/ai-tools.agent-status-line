@@ -6,37 +6,43 @@ A rich, single-line status bar for **Claude Code**, **Cursor**, and **OpenCode**
 Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m | 12% 4h59m/5h | 55% 6d23h/7d
 ```
 
+- **Claude Code:** `/plugin marketplace add sergemso/ai-tools.agent-status-line`, then `/plugin install statusline@claude-code-status-line`, then `/statusline:setup`
+- **Cursor:** `npx @statusline/claude-plugin install`, then paste the printed `statusLine` snippet into `~/.cursor/cli-config.json` (Cursor Agent CLI; [desktop app](docs/cursor.md#install))
+- **OpenCode:** `opencode plugin add @statusline/opencode-plugin`
+
 ![The same Claude Code session at 130, 100, 70 and 45 columns](docs/images/claude-code-widths.svg)
 
 *The same session as the terminal narrows. These images are real output of the built binary, not screenshots of the agents.*
 
-[Quickstart](#quickstart) · [In 30 seconds](#in-30-seconds) · [Reading the line](#reading-the-line) · [Agents](#agents) · [Updating and uninstalling](#updating) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting) · [Architecture](#architecture) · [Contributing](#contributing)
+**Jump to your agent:** [Claude Code](#claude-code--plugin-marketplace-recommended) ([guide](docs/claude-code.md)) · [Cursor](#cursor) ([guide](docs/cursor.md)) · [OpenCode](#opencode-tui) ([guide](docs/opencode.md))
 
-**Names, because there are three:** the GitHub repo and the Claude Code marketplace are `claude-code-status-line`; the npm packages are `@statusline/claude-plugin` (the CLI and Claude Code/Cursor binary), `@statusline/core` (the library) and `@statusline/opencode-plugin`; the Claude Code plugin itself is called `statusline`.
+[Quickstart](#quickstart) · [In 30 seconds](#in-30-seconds) · [Reading the line](#reading-the-line) · [Agents](#agents) · [Updating and uninstalling](#updating-and-uninstalling) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting) · [Architecture](#architecture) · [Contributing](#contributing)
 
 ---
 
 ## Quickstart
 
-**Requirements:** Node.js ≥ 18. The marketplace and script installs also need `git` (they build from source on first run); the npm install ships a prebuilt binary and needs only Node. No `jq`, `curl` or `awk`.
+**Requirements:** Node.js ≥ 18. Only the Claude Code one-shot script and installs from a clone need `git` (they build from source); the marketplace, npm and Cursor installs ship a prebuilt binary and need only Node. No `jq`, `curl` or `awk`.
 
 | Agent | Recommended | Alternatives |
 |---|---|---|
-| **Claude Code** | [Plugin marketplace](#claude-code--plugin-marketplace-recommended): auto-updates, slash commands | [npm](#claude-code--npm-pinned-no-auto-update) · [one-shot script](#claude-code--one-shot-script) · [manual](#manual-setup) |
-| **Cursor** | [One-shot script](#cursor) | [manual](#manual-setup) |
+| **Claude Code** | [Plugin marketplace](#claude-code--plugin-marketplace-recommended): auto-updates, slash commands | [npm](#claude-code--npm-pinned-no-auto-update) · [one-shot script](#claude-code--one-shot-script) · [from a clone](docs/claude-code.md#install) |
+| **Cursor** | [`npx @statusline/claude-plugin install`](#cursor) | [from a clone](docs/cursor.md#install) |
 | **OpenCode** (TUI) | `opencode plugin add @statusline/opencode-plugin` ([details](#opencode-tui)) | [one-shot script](#opencode-tui) |
+
+**Names, because there are three:** the GitHub repo is `ai-tools.agent-status-line` and the Claude Code marketplace is `claude-code-status-line`; the npm packages are `@statusline/claude-plugin` (the CLI and Claude Code/Cursor binary), `@statusline/core` (the library) and `@statusline/opencode-plugin`; the Claude Code plugin itself is called `statusline`.
 
 Full guides with screenshots, options and troubleshooting: **[Claude Code](docs/claude-code.md) · [Cursor](docs/cursor.md) · [OpenCode](docs/opencode.md)**.
 
 ### Claude Code — plugin marketplace (recommended)
 
 ```
-/plugin marketplace add sergemso/claude-code-status-line
+/plugin marketplace add sergemso/ai-tools.agent-status-line
 /plugin install statusline@claude-code-status-line
 /statusline:setup
 ```
 
-`/statusline:setup` builds the binary, copies it to `~/.claude/statusline/statusline` and writes the `statusLine` entry into `~/.claude/settings.json` (it refuses to overwrite a different status line unless you add `--force`). It then offers to walk you through customising. (`/statusline:uninstall` undoes it.) A SessionStart hook (`scripts/bootstrap.sh`) rebuilds the binary when the plugin updates. **Restart Claude Code** after the first install.
+`/statusline:setup` copies the prebuilt binary to `~/.claude/statusline/statusline` and writes the `statusLine` entry into `~/.claude/settings.json` (it refuses to overwrite a different status line unless you add `--force`). It then offers to walk you through customising. (`/statusline:uninstall` undoes it.) A SessionStart hook (`scripts/bootstrap.sh`) re-copies the binary when the plugin updates. **Restart Claude Code** after the first install.
 
 ### Claude Code — npm (pinned, no auto-update)
 
@@ -49,7 +55,7 @@ This does the same copy-and-configure step as `/statusline:setup` from the publi
 ### Claude Code — one-shot script
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-claude-code.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-claude-code.sh | bash
 ```
 
 Clones the repo to `~/.claude/claude-code-status-line`, builds it and runs `install --configure`. Updating means `git pull && npm install` in that directory.
@@ -75,10 +81,10 @@ New to the symbols? Read [In 30 seconds](#in-30-seconds) next.
 ### Cursor
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-cursor.sh | bash
+npx @statusline/claude-plugin install
 ```
 
-Builds the binary, copies it to `~/.claude/statusline/`, and prints the JSON snippet to add to Cursor's `settings.json` (`~/.config/Cursor/User/settings.json` on Linux, `~/Library/Application Support/Cursor/User/settings.json` on macOS, `%APPDATA%\Cursor\User\settings.json` on Windows). Restart Cursor after. Cursor has no public plugin registry for status lines, so there is no marketplace route.
+This only copies the prebuilt binary to `~/.claude/statusline/` (no git, no build) and prints a `statusLine` JSON snippet; **you still paste the snippet yourself**. For the Cursor Agent CLI, paste it into `~/.cursor/cli-config.json` (verified). For the desktop app the file is probably Cursor's `settings.json`, but that is unverified: see [Where the entry goes](docs/cursor.md#install). Restart Cursor after. Cursor has no public plugin registry for status lines, so there is no marketplace route. (`curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash` does the same and also prints the settings locations.)
 
 ### OpenCode (TUI)
 
@@ -86,14 +92,15 @@ Builds the binary, copies it to `~/.claude/statusline/`, and prints the JSON sni
 opencode plugin add @statusline/opencode-plugin
 ```
 
-That adds the package to `~/.config/opencode/opencode.json`; run `opencode` and the line appears in the footer. The one-shot script (`scripts/install-opencode.sh`) does the same, and falls back to building from source if the package cannot be fetched. **TUI mode only**: `opencode acp` has no footer to draw into.
+That adds the package to `~/.config/opencode/opencode.json`; run `opencode` and the line appears in the footer. The one-shot script (`scripts/install-opencode.sh`) does the same. **TUI mode only**: `opencode acp` has no footer to draw into.
 
 #### OpenCode options
 
-OpenCode shows its own context, cost and `ctrl+p commands` on the right of the footer, so by default the line renders only `model,tokens,resets` there and leaves a two-column gap. To change that, register the plugin with options:
+Options go in `~/.config/opencode/cli.json`, not `opencode.json` (options in `opencode.json` are ignored). OpenCode shows its own context, cost and `ctrl+p commands` on the right of the footer, so by default the line renders only `model,tokens,resets` there and leaves a two-column gap. To change that, register the plugin in `cli.json` with options:
 
 ```jsonc
 {
+  "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
       "package": "@statusline/opencode-plugin",
@@ -103,7 +110,9 @@ OpenCode shows its own context, cost and `ctrl+p commands` on the right of the f
 }
 ```
 
-`placement`: `replace` (default; takes over the footer status slot), `append` (adds to it) or `composer-top` (its own full-width row above the prompt). `sections` is a comma-separated list of `model`, `context`, `cost`, `tokens`, `resets`, `worktree`, … Full reference: [`packages/opencode-plugin/README.md`](packages/opencode-plugin/README.md).
+`placement`: `replace` (default; takes over the footer status slot), `append` (adds to it) or `composer-top` (its own full-width row above the prompt; needs a release newer than 1.1.2, the next release). `sections` is a comma-separated list of `model`, `context`, `cost`, `tokens`, `resets`, `worktree`, … Full reference: [`packages/opencode-plugin/README.md`](packages/opencode-plugin/README.md).
+
+Rate-limit reset windows are only supported for the `zai` and `zai-cn` providers; other providers show none (see [Quota windows](docs/opencode.md#quota-windows)).
 
 ---
 
@@ -124,43 +133,9 @@ These are estimates (they ignore your prompt and the output, and assume a typica
 
 ## Reading the line
 
-Example, 180k tokens of context, warm cache, Sonnet pricing:
-
-```text
-Sonnet 5.5 med | ▕▁▏ 18%/1M | Σ 31¢ ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m
-```
+Each group below explains one part of the line. The image shows one Claude Code session at a fixed 130 columns in six states, each captioned in the image: fresh session, mid session (next-call cost and restart thresholds appear), cold cache, context nearly full, rate limit close, and a pricier model. It uses the words and short forms; the tables below show the glyph form, which is what you get on a narrower window (see [Text styles](#text-styles-words-short-glyph)).
 
 ![Six states of the Claude Code status line](docs/images/claude-code-states.svg)
-
-### Text styles: words, short, glyph
-
-Every efficiency and cache item has three text forms. By default (`auto`) the line uses the most readable form in which everything fits your terminal width, and falls back towards glyphs as the window narrows; items start to drop only after the glyph form no longer fits.
-
-| Item | words | short | glyph |
-|---|---|---|---|
-| Session cost | `session 31¢` | `31¢ total` | `Σ 31¢` |
-| Next request | `next call 3.6¢` | `next 3.6¢` | `⚡ 3.6¢` |
-| Compaction | `compact cost 25¢` | `compact 25¢` | `⇲ 25¢` |
-| Restart thresholds | `restart: maybe at 7, yes at 9 calls` | `restart 7–9` | `⟲ 7 9` |
-| Cache | `cache 25m` / `cache cold` | `cache 25m` / `cache cold` | `⏱ 25m` / `⏱ cold` |
-
-A fourth style, **`ascii`**, uses plain ASCII only (`31c tot`, `nx 3.6c`, `cmp 27c`, `rst 7 10`, `[##--]` for the bar) for fonts or consoles that cannot show the symbols. `auto` never picks it by width; it is chosen automatically only when the environment cannot show Unicode (non-UTF-8 locale, or `TERM=linux`/`dumb`), and the wizard offers it when you say some symbols look broken. A symbol missing from a font cannot be detected by a program, which is why the wizard asks.
-
-The words form needs roughly 120 columns, short about 100, glyph about 70. Force a style at any width:
-
-```bash
-statusline config format glyph                  # always compact, at any width
-statusline config format words                  # always readable
-statusline config format ascii                  # plain ASCII only
-statusline config format auto                   # back to width-based (default)
-statusline config format overhead glyph         # one section: cost, overhead, cache
-statusline config format cost.session words     # one item (see `statusline config format` for the keys)
-statusline config format cost.session default   # remove an override
-```
-
-Environment variables work too: `STATUSLINE_FORMAT=glyph`, `STATUSLINE_FORMATS=overhead=glyph,cost.session=words`. Precedence: item override, then section override, then the global format, then the width-based choice. A forced style never changes with width, so a forced `words` item can push other items off a narrow line. Without a detected terminal width, the line uses glyphs.
-
-The examples in this README use the glyph form.
 
 ### Model group
 
@@ -188,7 +163,7 @@ Optional `~/.claude/model-multipliers.json` (not created for you; it is separate
 
 | Indicator | Meaning |
 |---|---|
-| `▕▁▏ 18%/1M` | Context window use: bar, percent used, window size. 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80%. |
+| `▕▂▏ 18%/1M` | Context window use: bar, percent used, window size. 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80%. |
 
 ### Session efficiency group
 
@@ -258,6 +233,36 @@ Width is detected from the terminal (`stty`), so the line refits on the next ref
 
 ---
 
+### Text styles: words, short, glyph
+
+Every efficiency and cache item has three text forms. By default (`auto`) the line uses the most readable form in which everything fits your terminal width, and falls back towards glyphs as the window narrows; items start to drop only after the glyph form no longer fits.
+
+| Item | words | short | glyph |
+|---|---|---|---|
+| Session cost | `session 31¢` | `31¢ total` | `Σ 31¢` |
+| Next request | `next call 3.6¢` | `next 3.6¢` | `⚡ 3.6¢` |
+| Compaction | `compact cost 25¢` | `compact 25¢` | `⇲ 25¢` |
+| Restart thresholds | `restart: maybe at 7, yes at 9 calls` | `restart 7–9` | `⟲ 7 9` |
+| Cache | `cache 25m` / `cache cold` | `cache 25m` / `cache cold` | `⏱ 25m` / `⏱ cold` |
+
+A fourth style, **`ascii`**, uses plain ASCII only (`31c tot`, `nx 3.6c`, `cmp 27c`, `rst 7 10`, `[##--]` for the bar) for fonts or consoles that cannot show the symbols. `auto` never picks it by width; it is chosen automatically only when the environment cannot show Unicode (non-UTF-8 locale, or `TERM=linux`/`dumb`), and the wizard offers it when you say some symbols look broken. A symbol missing from a font cannot be detected by a program, which is why the wizard asks.
+
+The words form needs roughly 120 columns, short about 100, glyph about 70. Force a style at any width:
+
+```bash
+statusline config format glyph                  # always compact, at any width
+statusline config format words                  # always readable
+statusline config format ascii                  # plain ASCII only
+statusline config format auto                   # back to width-based (default)
+statusline config format overhead glyph         # one section: cost, overhead, cache
+statusline config format cost.session words     # one item (see `statusline config format` for the keys)
+statusline config format cost.session default   # remove an override
+```
+
+Environment variables work too: `STATUSLINE_FORMAT=glyph`, `STATUSLINE_FORMATS=overhead=glyph,cost.session=words`. Precedence: item override, then section override, then the global format, then the width-based choice. A forced style never changes with width, so a forced `words` item can push other items off a narrow line. Without a detected terminal width, the line uses glyphs.
+
+The examples in this README use the glyph form.
+
 ### Behaviour
 
 **Smart shrinking:** on a narrow terminal, items (not whole sections) drop one at a time, lowest priority first, until the line fits. The order is strict: once an item is dropped, everything ranked below it is dropped too. See [Drop order](#drop-order).
@@ -275,7 +280,7 @@ The binary auto-detects which coding agent is feeding it data and adapts the out
 | Agent | Status | How it works | Install |
 |---|---|---|---|
 | **Claude Code** | ✅ Built-in | External command: Claude Code pipes JSON to stdin, the binary returns an ANSI string. Configured via `settings.json` `statusLine.command`. | [Quickstart](#claude-code--plugin-marketplace-recommended) · [guide](docs/claude-code.md) |
-| **Cursor** | ✅ Built-in | Same external-command contract, with Cursor-specific fields (`render_width_chars`, `autorun`, `max_mode`, `param_summary`). | [One-shot script](#cursor), then add the JSON snippet to Cursor's settings · [guide](docs/cursor.md) |
+| **Cursor** | ✅ Built-in | Same external-command contract, with Cursor-specific fields (`render_width_chars`, `autorun`, `max_mode`, `param_summary`). | [`npx` install](#cursor), then add the JSON snippet to Cursor's settings · [guide](docs/cursor.md) |
 | **OpenCode** | ✅ Plugin (`@statusline/opencode-plugin`) | OpenCode v2 has no external-command contract; it loads in-process TUI plugins that claim a footer slot. TUI mode only — not ACP. | `opencode plugin add @statusline/opencode-plugin` · [guide](docs/opencode.md) |
 
 **Add a new agent:** implement the `StatusLineAdapter` interface (see [`docs/adding-adapters.md`](docs/adding-adapters.md)). Detection is automatic via `canHandle()`.
@@ -287,66 +292,17 @@ statusline agent list
 statusline agent detect path/to/input.json
 ```
 
-### Manual setup
+### Updating and uninstalling
 
-If the one-shot scripts don't fit your workflow, here's the manual path for each agent.
+Per-agent steps are in each guide: [Claude Code](docs/claude-code.md#updating) · [Cursor](docs/cursor.md#configure-update-remove) · [OpenCode](docs/opencode.md#update-and-remove). In short:
 
-**Shared first step** — clone + build:
+| Agent | Update | Uninstall |
+|---|---|---|
+| Claude Code | Marketplace: `/plugin marketplace update claude-code-status-line`, then `/reload-plugins`. npm: `npx @statusline/claude-plugin@latest install --configure`. Script or clone: `git pull && npm install`. | `/statusline:uninstall` **first** (disabling the plugin does not stop the status line), then `/plugin uninstall statusline@claude-code-status-line`. |
+| Cursor | `npx @statusline/claude-plugin@latest install` again. | Remove the `statusLine` entry from Cursor's settings; delete `~/.claude/statusline/`. |
+| OpenCode | `opencode plugin add @statusline/opencode-plugin` again, or pin a version in `opencode.json`. | Remove `@statusline/opencode-plugin` from `~/.config/opencode/opencode.json`. |
 
-```bash
-git clone https://github.com/sergemso/claude-code-status-line.git
-cd claude-code-status-line
-npm install        # postinstall hook builds the binary automatically
-```
-
-**Claude Code** — one command copies the binary and wires up `~/.claude/settings.json`:
-
-```bash
-./bin/statusline install --configure
-# → restart Claude Code
-```
-
-**Cursor** — copy the binary and add a settings entry:
-
-```bash
-mkdir -p ~/.claude/statusline
-cp bin/statusline ~/.claude/statusline/
-chmod +x ~/.claude/statusline/statusline
-```
-
-Then add to your Cursor `settings.json` (paths in [Cursor](#cursor) above):
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "/home/you/.claude/statusline/statusline"
-  }
-}
-```
-
-Use an absolute path; `~` is not expanded in all hosts.
-
-**OpenCode (TUI)** — `opencode plugin add @statusline/opencode-plugin`, as in the [Quickstart](#opencode-tui).
-
-### Updating
-
-| Installed via | Update |
-|---|---|
-| Claude Code marketplace | `/plugin marketplace update claude-code-status-line`, then `/reload-plugins`. The SessionStart hook rebuilds the binary on the next session. |
-| npm | `npx @statusline/claude-plugin@latest install --configure` |
-| One-shot script / manual clone | `cd ~/.claude/claude-code-status-line && git pull && npm install` (Cursor: re-copy `bin/statusline` to `~/.claude/statusline/`) |
-| OpenCode | `opencode plugin add @statusline/opencode-plugin` again, or pin a version in `opencode.json` |
-
-Your settings live in `~/.claude/statusline/config`, which no update touches.
-
-### Uninstalling
-
-Disabling or uninstalling the Claude Code plugin does **not** stop the status line: it runs from the `statusLine` entry in your own `settings.json` and a copied binary. Undo those first:
-
-- **Claude Code:** `/statusline:uninstall` (or `~/.claude/statusline/statusline uninstall`) removes the `statusLine` entry and the copied binary, and keeps your saved settings; add `--purge` to delete those too. Then, if you used the marketplace: `/plugin uninstall statusline@claude-code-status-line` and `/plugin marketplace remove claude-code-status-line`. Optionally delete `~/.claude/model-prices.json`.
-- **Cursor:** remove the `statusLine` entry from Cursor's `settings.json`; delete `~/.claude/statusline/`.
-- **OpenCode:** remove `@statusline/opencode-plugin` from `~/.config/opencode/opencode.json`.
+Your settings live in `~/.claude/statusline/config`; updates never touch them.
 
 ---
 
@@ -438,7 +394,7 @@ Any setting can be overridden via `STATUSLINE_<KEY>` (e.g. `STATUSLINE_RESETS`, 
 | A setting seems ignored | An env var `STATUSLINE_<KEY>` beats the saved value. `statusline config show` lists each value and its source. |
 | `⏱ cold` never turns into a countdown | The prompt cache has expired or hasn't been written yet; it recovers after the next request. |
 | OpenCode plugin doesn't load | It only works in **TUI mode** (`opencode`), not ACP mode (`opencode acp`). See [`packages/opencode-plugin/README.md`](packages/opencode-plugin/README.md). |
-| OpenCode line touches or repeats OpenCode's own footer | Use 1.1.2 or newer of `@statusline/opencode-plugin`, or give the line its own row with `"placement": "composer-top"` — see [OpenCode options](#opencode-options). |
+| OpenCode line touches or repeats OpenCode's own footer | Use 1.1.2 or newer of `@statusline/opencode-plugin`. To give the line its own row, `"placement": "composer-top"` needs a release newer than 1.1.2 (the next release); on 1.1.2 it draws nothing. See [OpenCode options](#opencode-options). |
 
 ---
 
@@ -475,7 +431,7 @@ packages/
   core/                  @statusline/core — sections, layout engine, renderers
   opencode-plugin/       @statusline/opencode-plugin — OpenCode TUI plugin
 commands/                Claude Code slash commands (/statusline:setup, /statusline:config)
-hooks/                   Claude Code SessionStart hook (builds the binary)
+hooks/                   Claude Code SessionStart hook (keeps the copied binary current)
 .claude-plugin/          plugin.json + marketplace.json for the Claude Code marketplace
 scripts/                 one-shot installers (Claude Code, Cursor, OpenCode)
 docs/                    adapters, configuration, multi-agent, releasing
@@ -507,8 +463,8 @@ Contributions welcome — bug reports, fixtures, new adapters, renderer improvem
 ### Setup
 
 ```bash
-git clone https://github.com/sergemso/claude-code-status-line.git
-cd claude-code-status-line
+git clone https://github.com/sergemso/ai-tools.agent-status-line.git
+cd ai-tools.agent-status-line
 npm install
 npm run build:core    # build @statusline/core first (other packages depend on it)
 npm run build         # build the main CLI

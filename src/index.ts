@@ -138,9 +138,7 @@ async function main() {
         }
       }
 
-      if (configure) {
-        await install({ configure, force, interval });
-      }
+      await install({ configure, force, interval });
       break;
     }
 
@@ -162,7 +160,7 @@ async function main() {
     case "help":
     case "-h":
     case "--help":
-      console.log(`claude-code-status-line - TypeScript rewrite
+      console.log(`statusline - agent status line for Claude Code, Cursor and OpenCode
 
 Usage: statusline <command> [args]
 
@@ -181,6 +179,9 @@ Config subcommands:
   resets LIST         Which reset windows to show
   thresholds ...      Yellow/red breakpoints
   width [N|auto]      Terminal width
+  format [STYLE]      Text style: auto, words, short, glyph, ascii
+  separator [TEXT]    What is drawn between groups
+  wizard              Guided setup
   margin N            Right margin
   overhead [FRESH [SUMMARY]]  Token sizes for overhead metric
   dump [PATH|off]     Debug dump path

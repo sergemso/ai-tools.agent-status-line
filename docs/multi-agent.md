@@ -38,7 +38,7 @@ The status-line plugin now supports multiple coding agents through a unified ada
 
 ### Cursor
 - **Config**: `~/.cursor/cli-config.json`
-- **Input**: `render_width_chars`, `autorun`, `model.param_summary`, `model.max_mode`
+- **Input**: `render_width_chars`, `autorun`, optional `model.param_summary` and `model.max_mode`
 - **Features**: Model, context, tokens (no cost, cache, or rate limits)
 
 ## Configuration

@@ -4,15 +4,7 @@ disable-model-invocation: true
 allowed-tools: Bash, Read, AskUserQuestion
 ---
 
-The plugin binary lives at `${CLAUDE_PLUGIN_ROOT}/bin/statusline`. The SessionStart hook builds it automatically on first run, but for the initial setup we build it explicitly to avoid waiting.
-
-**Build the binary if it's missing:**
-
-```bash
-if [ ! -x "${CLAUDE_PLUGIN_ROOT}/bin/statusline" ]; then
-  cd "${CLAUDE_PLUGIN_ROOT}" && npm install --silent && npm run build:core && npm run build && chmod +x bin/statusline
-fi
-```
+The plugin ships a prebuilt binary at `${CLAUDE_PLUGIN_ROOT}/bin/statusline`; nothing needs building. The SessionStart hook keeps the copy that `settings.json` points at in step with it.
 
 **Install + configure:**
 

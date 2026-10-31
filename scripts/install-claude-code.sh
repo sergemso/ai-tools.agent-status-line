@@ -2,7 +2,7 @@
 # install-claude-code.sh — one-shot installer for Claude Code.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/sergemso/claude-code-status-line/main/scripts/install-claude-code.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-claude-code.sh | bash
 #
 # Or, if you've cloned the repo:
 #   bash scripts/install-claude-code.sh
@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/sergemso/claude-code-status-line.git"
+REPO_URL="https://github.com/sergemso/ai-tools.agent-status-line.git"
 INSTALL_DIR="${STATUSLINE_INSTALL_DIR:-$HOME/.claude/claude-code-status-line}"
 BRANCH="${STATUSLINE_BRANCH:-main}"
 

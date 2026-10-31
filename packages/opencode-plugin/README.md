@@ -118,10 +118,13 @@ in-process TUI plugin from this package does not apply.
 ## Configuration
 
 The plugin uses sensible defaults. To override the enabled sections, pass
-options when registering the package:
+options when registering the package in `~/.config/opencode/cli.json`, the
+TUI's own config (OpenCode 2.2.5 does not pass options written in
+`opencode.json` to the TUI plugin):
 
 ```jsonc
 {
+  "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
       "package": "@statusline/opencode-plugin",
@@ -142,7 +145,7 @@ renders only `model,tokens,resets` there and leaves a two-column gutter so
 the two never touch. Pass `sections` to add more back.
 
 To avoid the shared row entirely, render on its own full-width line above
-the prompt:
+the prompt (in `cli.json` as above):
 
 ```jsonc
 {
@@ -156,7 +159,7 @@ the prompt:
 ```
 
 `placement` accepts `replace` (default, takes over the footer status slot),
-`append` (adds to it) and `composer-top`. In `composer-top` the default
+`append` (adds to it) and `composer-top` (needs a release newer than 1.1.2). In `composer-top` the default
 sections are `model,context,cost,tokens,resets`. `worktree` is never on by
 default; add it via `sections` if you want the branch.
 

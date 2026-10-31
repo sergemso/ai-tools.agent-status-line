@@ -24,6 +24,14 @@ describe("Adapter Registry Auto-Detection", () => {
     expect(adapter!.agentType).toBe("claude-code");
   });
 
+  test("detects a fresh Cursor CLI session (no param_summary, null context fields)", () => {
+    const input = loadFixtureDirect("cursor", "cli-fresh-session");
+    const adapter = adapterRegistry.detect(input);
+    expect(adapter).toBeDefined();
+    expect(adapter!.agentType).toBe("cursor");
+    expect(() => adapter!.parse(input as never)).not.toThrow();
+  });
+
   test("detects Cursor from basic fixture", () => {
     const input = loadFixtureDirect("cursor", "basic");
     const adapter = adapterRegistry.detect(input);

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # bootstrap.sh — SessionStart hook for Claude Code plugin marketplace.
 #
-# When the plugin is installed via `/plugin marketplace add` + `/plugin install`,
-# Claude Code clones the repo but does NOT run `npm install`. This hook runs
-# on every session start and ensures the binary is built and in place.
+# The marketplace installs the prebuilt npm package, so this hook only copies
+# the binary to the stable location settings.json points at (see below).
+# When run from a source checkout (no prebuilt package), it instead builds the
+# binary in the background; Claude Code does not run `npm install` itself.
 #
-# It is idempotent and fast: if the binary exists and is newer than the source,
-# it exits immediately (< 50ms). Otherwise it builds silently in the background.
+# It is idempotent and fast: if the binary is already in place and current, it
+# exits immediately (< 50ms).
 #
 # Environment:
 #   CLAUDE_PLUGIN_ROOT  — set by Claude Code to the plugin's install dir

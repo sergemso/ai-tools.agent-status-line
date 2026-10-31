@@ -9,9 +9,7 @@ import { splitArgs } from './args'
 // "statusline-model" rather than "statusline:model".)
 //
 // The binary lives at ${CLAUDE_PLUGIN_ROOT}/bin/statusline. The
-// SessionStart hook (scripts/bootstrap.sh) ensures it's built and
-// executable; if it's missing on first run, we fall back to building it
-// synchronously here so the command still works.
+// SessionStart hook (scripts/bootstrap.sh) keeps it executable and in place.
 
 const BINARY = `${process.env.CLAUDE_PLUGIN_ROOT ?? ''}/bin/statusline`
 
@@ -40,7 +38,7 @@ export const register: Register = (on) => {
         const r = await $.process.run(argv)
         return { text: `${r.stdout}${r.stderr}`.trim() || '(no output)' }
       } catch (err) {
-        return { text: `${name}: could not run \`${BINARY} config ${sub}\` — the binary may not be built yet. Run \`/statusline:setup\` to build it. (${err instanceof Error ? err.message : String(err)})` }
+        return { text: `${name}: could not run \`${BINARY} config ${sub}\` — the binary may be missing. Run \`/statusline:setup\`. (${err instanceof Error ? err.message : String(err)})` }
       }
     })
   }
