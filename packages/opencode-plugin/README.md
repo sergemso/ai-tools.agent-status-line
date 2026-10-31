@@ -134,6 +134,32 @@ options when registering the package:
 Available legacy section names: `model`, `context`, `cost`, `tokens`,
 `overhead`, `cache`, `stats`, `resets`, `vim`, `worktree`.
 
+### Sharing the footer with OpenCode
+
+OpenCode's footer already shows context usage, cost and the
+`ctrl+p commands` hint on the right. By default the plugin therefore
+renders only `model,tokens,resets` there and leaves a two-column gutter so
+the two never touch. Pass `sections` to add more back.
+
+To avoid the shared row entirely, render on its own full-width line above
+the prompt:
+
+```jsonc
+{
+  "plugins": [
+    {
+      "package": "@statusline/opencode-plugin",
+      "options": { "placement": "composer-top" }
+    }
+  ]
+}
+```
+
+`placement` accepts `replace` (default, takes over the footer status slot),
+`append` (adds to it) and `composer-top`. In `composer-top` the default
+sections are `model,context,cost,tokens,resets`. `worktree` is never on by
+default; add it via `sections` if you want the branch.
+
 ## Development
 
 ```bash

@@ -20,7 +20,11 @@ import { For, Show, createMemo, createSignal } from "solid-js";
 import type { RGBA } from "@opentui/core";
 import { Plugin } from "@opencode/plugin/tui";
 import { adaptSession } from "./adapter.js";
-import { renderStatusLine } from "./render.js";
+import {
+  DEFAULT_OPENCODE_SECTIONS,
+  FOOTER_OPENCODE_SECTIONS,
+  renderStatusLine,
+} from "./render.js";
 import { ansiToSpans, type Span } from "./ansi.js";
 import {
   fetchProviderQuota,
@@ -32,11 +36,24 @@ import type { ModelInfo, ModelRef, TokenUsageInfo } from "./types.js";
 
 /** Options accepted through `plugins: [{ package, options }]` in OpenCode. */
 interface StatusLineOptions {
-  /** Legacy comma-separated section names (model,context,cost,tokens,...). */
+  /**
+   * Legacy comma-separated section names (model,context,cost,tokens,...).
+   * Defaults to model,tokens,resets in the footer (OpenCode already shows
+   * context and cost there) and to the full OpenCode set in composer-top.
+   */
   readonly sections?: string;
-  /** Replace the host status slot (default) or append to it. */
-  readonly placement?: "replace" | "append";
+  /**
+   * Where to render:
+   *  - "replace" (default): take over the footer status slot.
+   *  - "append": add to the footer status slot.
+   *  - "composer-top": own full-width row above the prompt, no sharing with
+   *    the footer's right-hand items.
+   */
+  readonly placement?: "replace" | "append" | "composer-top";
 }
+
+/** Columns left free before the host's right-hand footer items. */
+const FOOTER_GUTTER = 2;
 
 type LocationRef = { readonly directory: string; readonly workspaceID?: string };
 
@@ -44,6 +61,10 @@ export default Plugin.define({
   id: "statusline.opencode",
   setup(context) {
     const options = context.options as StatusLineOptions;
+    const shared = options.placement !== "composer-top";
+    const sections =
+      options.sections ??
+      (shared ? FOOTER_OPENCODE_SECTIONS : DEFAULT_OPENCODE_SECTIONS);
 
     // Repaint when any server event lands. Events can be frequent while a
     // model streams, so coalesce bursts into one repaint per ~100ms.
@@ -175,9 +196,9 @@ export default Plugin.define({
         const width = Math.max(20, fitted() ?? context.renderer.width ?? 120);
         const ansi = renderStatusLine(input, {
           width,
-          margin: 0,
+          margin: shared ? FOOTER_GUTTER : 0,
           widthConstrained: true,
-          sections: options.sections ?? null,
+          sections,
         });
         return ansiToSpans(ansi);
       });
@@ -222,9 +243,11 @@ export default Plugin.define({
     );
 
     const release =
-      options.placement === "append"
-        ? context.ui.slot({ append: "prompt.footer.status", render })
-        : context.ui.slot({ replace: "prompt.footer.status", render });
+      options.placement === "composer-top"
+        ? context.ui.slot({ append: "session.composer.top", render })
+        : options.placement === "append"
+          ? context.ui.slot({ append: "prompt.footer.status", render })
+          : context.ui.slot({ replace: "prompt.footer.status", render });
 
     return () => {
       release();

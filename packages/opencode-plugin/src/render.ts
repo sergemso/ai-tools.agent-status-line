@@ -35,13 +35,20 @@ export interface RenderStatusLineOptions {
   readonly widthConstrained?: boolean;
   /**
    * Comma-separated legacy section names to enable/disable. Pass null to
-   * use the default set (model, context, cost, tokens, resets).
+   * use core's own defaults (every section with data, including worktree).
+   * Leave undefined for the OpenCode default set.
    */
   readonly sections?: string | null;
 }
 
 /** Default sections for OpenCode (no cache/overhead — data unavailable). */
-const DEFAULT_OPENCODE_SECTIONS = "model,context,cost,tokens,resets";
+export const DEFAULT_OPENCODE_SECTIONS = "model,context,cost,tokens,resets";
+
+/**
+ * Defaults when sharing the footer row with OpenCode's own status, which
+ * already shows context usage and cost on the right.
+ */
+export const FOOTER_OPENCODE_SECTIONS = "model,tokens,resets";
 
 /**
  * Render a CoreRenderInput into an ANSI status-line string.
