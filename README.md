@@ -50,10 +50,10 @@ Clones the repo to `~/.claude/claude-code-status-line`, builds it and runs `inst
 
 ### Check it works
 
-After restarting your agent the line appears at the bottom of the prompt. To test the binary on its own, feed it a minimal Claude Code payload:
+After restarting your agent the line appears at the bottom of the prompt. To test the binary on its own, feed it a minimal Claude Code payload (`session_id`, `model`, `cost` and `context_window` are required):
 
 ```bash
-echo '{"model":{"id":"claude-sonnet-5-5","display_name":"Sonnet 5.5"},"cwd":"/tmp","cost":{"total_cost_usd":0.5},"context_window":{"context_window_size":200000,"used_percentage":12}}' \
+echo '{"session_id":"test","model":{"id":"claude-sonnet-5-5","display_name":"Sonnet 5.5"},"cost":{"total_cost_usd":0.5},"context_window":{"context_window_size":200000,"used_percentage":12}}' \
   | ~/.claude/statusline/statusline
 ```
 
