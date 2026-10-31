@@ -31,10 +31,11 @@ Run `opencode`; the line appears in the footer. Pin a version with `@statusline/
 
 ## Placement and sections
 
-OpenCode already shows context use, cost and `ctrl+p commands` on the right of its footer, so by default the plugin renders only `model,tokens,resets` there and leaves a two-column gap. Options go in the plugin entry:
+OpenCode already shows context use, cost and `ctrl+p commands` on the right of its footer, so by default the plugin renders only `model,tokens,resets` there and leaves a two-column gap. Options go in the plugin entry, in **`~/.config/opencode/cli.json`** (the TUI's own config; the plugin's TUI half reads its options from there, not from `opencode.json`):
 
 ```jsonc
 {
+  "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
       "package": "@statusline/opencode-plugin",
@@ -50,7 +51,7 @@ OpenCode already shows context use, cost and `ctrl+p commands` on the right of i
 | `append` | Adds to the footer status slot | `model,tokens,resets` |
 | `composer-top` | Its own full-width row above the prompt | `model,context,cost,tokens,resets` |
 
-> **Options not verified.** On OpenCode 2.2.5 I confirmed the default install (`opencode plugin add`, string entry in `opencode.json`). I could not make the options above take effect: the object form with `placement: "composer-top"` left the footer unchanged, and a `["@statusline/opencode-plugin", {…}]` tuple removed the plugin's line altogether. Treat the `placement` and `sections` options as unconfirmed until this is checked.
+> **Checked on OpenCode 2.2.5.** Options written in `opencode.json` never reach the plugin (it receives `{}` and falls back to the footer defaults), and the tuple form `["@statusline/opencode-plugin", {…}]` in `plugins` did not load it at all. In `cli.json` the options do arrive. `placement: "composer-top"` is **not working** there yet: with the options delivered, the row above the prompt stayed empty (tried with `model,tokens` and with all sections), even though the host has a `session.composer.top` slot. `replace` (the default) is verified; `append` is untested.
 
 `sections` overrides the defaults in any placement. Names: `model`, `context`, `cost`, `tokens`, `overhead`, `cache`, `stats`, `resets`, `vim`, `worktree`. The git branch (`worktree`) is never on by default. An unrecognised `placement` falls back to `replace`.
 
