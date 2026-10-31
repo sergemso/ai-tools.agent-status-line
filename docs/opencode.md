@@ -64,6 +64,10 @@ OpenCode already shows context use, cost and `ctrl+p commands` on the right of i
 
 OpenCode has no rate-limit payload, so for **`zai`** and **`zai-cn`** the plugin reads the API key OpenCode saved and fetches the provider's usage endpoint, refreshing every 5 minutes and keeping the last good value through failures. Other providers show no reset windows.
 
+## Update and remove
+
+Update: run `opencode plugin add @statusline/opencode-plugin` again, or pin a version in `opencode.json`. Remove: delete `@statusline/opencode-plugin` from `~/.config/opencode/opencode.json`.
+
 ## Troubleshooting
 
 | Symptom | Fix |

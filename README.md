@@ -10,6 +10,8 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25
 
 *The same session as the terminal narrows. These images are real output of the built binary, not screenshots of the agents.*
 
+**Jump to your agent:** [Claude Code](#claude-code--plugin-marketplace-recommended) ([guide](docs/claude-code.md)) · [Cursor](#cursor) ([guide](docs/cursor.md)) · [OpenCode](#opencode-tui) ([guide](docs/opencode.md))
+
 [Quickstart](#quickstart) · [In 30 seconds](#in-30-seconds) · [Reading the line](#reading-the-line) · [Agents](#agents) · [Updating and uninstalling](#updating) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting) · [Architecture](#architecture) · [Contributing](#contributing)
 
 **Names, because there are three:** the GitHub repo and the Claude Code marketplace are `claude-code-status-line`; the npm packages are `@statusline/claude-plugin` (the CLI and Claude Code/Cursor binary), `@statusline/core` (the library) and `@statusline/opencode-plugin`; the Claude Code plugin itself is called `statusline`.
@@ -22,8 +24,8 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25
 
 | Agent | Recommended | Alternatives |
 |---|---|---|
-| **Claude Code** | [Plugin marketplace](#claude-code--plugin-marketplace-recommended): auto-updates, slash commands | [npm](#claude-code--npm-pinned-no-auto-update) · [one-shot script](#claude-code--one-shot-script) · [manual](#manual-setup) |
-| **Cursor** | [One-shot script](#cursor) | [manual](#manual-setup) |
+| **Claude Code** | [Plugin marketplace](#claude-code--plugin-marketplace-recommended): auto-updates, slash commands | [npm](#claude-code--npm-pinned-no-auto-update) · [one-shot script](#claude-code--one-shot-script) · [from a clone](docs/claude-code.md#install) |
+| **Cursor** | [One-shot script](#cursor) | [from a clone](docs/cursor.md#install) |
 | **OpenCode** (TUI) | `opencode plugin add @statusline/opencode-plugin` ([details](#opencode-tui)) | [one-shot script](#opencode-tui) |
 
 Full guides with screenshots, options and troubleshooting: **[Claude Code](docs/claude-code.md) · [Cursor](docs/cursor.md) · [OpenCode](docs/opencode.md)**.
@@ -287,66 +289,17 @@ statusline agent list
 statusline agent detect path/to/input.json
 ```
 
-### Manual setup
+### Updating and uninstalling
 
-If the one-shot scripts don't fit your workflow, here's the manual path for each agent.
+Per-agent steps are in each guide: [Claude Code](docs/claude-code.md#updating) · [Cursor](docs/cursor.md#configure-update-remove) · [OpenCode](docs/opencode.md#update-and-remove). In short:
 
-**Shared first step** — clone + build:
+| Agent | Update | Uninstall |
+|---|---|---|
+| Claude Code | Marketplace: `/plugin marketplace update claude-code-status-line`, then `/reload-plugins`. npm: `npx @statusline/claude-plugin@latest install --configure`. Script or clone: `git pull && npm install`. | `/statusline:uninstall` **first** (disabling the plugin does not stop the status line), then `/plugin uninstall statusline@claude-code-status-line`. |
+| Cursor | Re-run the install script. | Remove the `statusLine` entry from Cursor's settings; delete `~/.claude/statusline/`. |
+| OpenCode | `opencode plugin add @statusline/opencode-plugin` again, or pin a version in `opencode.json`. | Remove `@statusline/opencode-plugin` from `~/.config/opencode/opencode.json`. |
 
-```bash
-git clone https://github.com/sergemso/claude-code-status-line.git
-cd claude-code-status-line
-npm install        # postinstall hook builds the binary automatically
-```
-
-**Claude Code** — one command copies the binary and wires up `~/.claude/settings.json`:
-
-```bash
-./bin/statusline install --configure
-# → restart Claude Code
-```
-
-**Cursor** — copy the binary and add a settings entry:
-
-```bash
-mkdir -p ~/.claude/statusline
-cp bin/statusline ~/.claude/statusline/
-chmod +x ~/.claude/statusline/statusline
-```
-
-Then add to your Cursor `settings.json` (paths in [Cursor](#cursor) above):
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "/home/you/.claude/statusline/statusline"
-  }
-}
-```
-
-Use an absolute path; `~` is not expanded in all hosts.
-
-**OpenCode (TUI)** — `opencode plugin add @statusline/opencode-plugin`, as in the [Quickstart](#opencode-tui).
-
-### Updating
-
-| Installed via | Update |
-|---|---|
-| Claude Code marketplace | `/plugin marketplace update claude-code-status-line`, then `/reload-plugins`. The SessionStart hook rebuilds the binary on the next session. |
-| npm | `npx @statusline/claude-plugin@latest install --configure` |
-| One-shot script / manual clone | `cd ~/.claude/claude-code-status-line && git pull && npm install` (Cursor: re-copy `bin/statusline` to `~/.claude/statusline/`) |
-| OpenCode | `opencode plugin add @statusline/opencode-plugin` again, or pin a version in `opencode.json` |
-
-Your settings live in `~/.claude/statusline/config`, which no update touches.
-
-### Uninstalling
-
-Disabling or uninstalling the Claude Code plugin does **not** stop the status line: it runs from the `statusLine` entry in your own `settings.json` and a copied binary. Undo those first:
-
-- **Claude Code:** `/statusline:uninstall` (or `~/.claude/statusline/statusline uninstall`) removes the `statusLine` entry and the copied binary, and keeps your saved settings; add `--purge` to delete those too. Then, if you used the marketplace: `/plugin uninstall statusline@claude-code-status-line` and `/plugin marketplace remove claude-code-status-line`. Optionally delete `~/.claude/model-prices.json`.
-- **Cursor:** remove the `statusLine` entry from Cursor's `settings.json`; delete `~/.claude/statusline/`.
-- **OpenCode:** remove `@statusline/opencode-plugin` from `~/.config/opencode/opencode.json`.
+Your settings live in `~/.claude/statusline/config`; updates never touch them.
 
 ---
 
