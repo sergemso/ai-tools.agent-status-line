@@ -1,18 +1,23 @@
 {
   "name": "statusline",
   "version": "1.2.0",
-  "description": "Agent status line — model, context, session cost, next-request and restart costs, cache timer, rate-limit resets, for Claude Code, Cursor and OpenCode.",
+  "description": "Status line for Claude Code, Cursor and OpenCode — model, context, session cost, next-request and restart costs, prompt-cache timer, rate-limit resets.",
   "author": {
-    "name": "sergemso"
+    "name": "S. Strebulaev",
+    "url": "https://github.com/sergemso"
   },
-  "repository": "https://github.com/sergemso/claude-code-status-line",
-  "homepage": "https://github.com/sergemso/claude-code-status-line",
+  "repository": "https://github.com/sergemso/ai-tools.agent-status-line",
+  "homepage": "https://github.com/sergemso/ai-tools.agent-status-line#readme",
   "license": "MIT",
   "keywords": [
     "claude-code",
+    "statusline",
     "status-line",
+    "cost",
+    "context",
+    "cache",
+    "rate-limit",
     "cursor",
-    "opencode",
-    "multi-agent"
+    "opencode"
   ]
 }

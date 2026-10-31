@@ -1,7 +1,7 @@
 {
   "name": "@statusline/claude-plugin",
   "version": "1.2.0",
-  "description": "Claude Code status line plugin - TypeScript rewrite",
+  "description": "Status line for Claude Code and Cursor — model, context, session cost, cache timer, rate-limit resets. Ships the Claude Code plugin and the statusline CLI.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -23,8 +23,10 @@
   },
   "keywords": [
     "claude-code",
+    "claude-code-plugin",
+    "statusline",
     "status-line",
-    "plugin"
+    "cursor"
   ],
   "author": "S. Strebulaev",
   "license": "MIT",
