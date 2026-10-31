@@ -28,7 +28,7 @@ Cursor's payload carries the model, the context window and token totals, but not
 npx @statusline/claude-plugin install
 ```
 
-This runs the published, prebuilt package (Node ≥ 18, no git or build), copies the binary to `~/.claude/statusline/statusline` and prints a JSON snippet. It does not touch Claude Code's `settings.json` (that needs `--configure`). Add the snippet to Cursor's configuration, then restart Cursor. A wrapper that does the same and also prints the settings locations: `curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash`.
+This runs the published, prebuilt package (Node ≥ 18, no git or build), copies the binary to `~/.claude/statusline/statusline` and prints a JSON snippet. It does not touch Claude Code's `settings.json` (that needs `--configure`). Add the snippet to Cursor's configuration yourself (the command does not), then restart Cursor. A wrapper that does the same and also prints the settings locations: `curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash`.
 
 ```json
 {
@@ -64,7 +64,7 @@ Settings are shared with Claude Code (`~/.claude/statusline/config`), so `status
 
 | Symptom | Fix |
 |---|---|
-| Nothing appears | Restart Cursor; check the command path exists and is executable; see the *Unverified* note above about which file Cursor reads. |
+| Nothing appears | Restart Cursor; check the command path exists and is executable; see [Where the entry goes](#install) above about which file Cursor reads. |
 | Wrong agent detected | `statusline agent detect payload.json`; Cursor payloads are matched before Claude Code's, on the Cursor-only fields. |
 | No cost or cache timer | Cursor does not send them. |
 

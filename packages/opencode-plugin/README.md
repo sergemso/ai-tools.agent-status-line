@@ -159,7 +159,7 @@ the prompt (in `cli.json` as above):
 ```
 
 `placement` accepts `replace` (default, takes over the footer status slot),
-`append` (adds to it) and `composer-top`. In `composer-top` the default
+`append` (adds to it) and `composer-top` (needs a release newer than 1.1.2). In `composer-top` the default
 sections are `model,context,cost,tokens,resets`. `worktree` is never on by
 default; add it via `sections` if you want the branch.
 

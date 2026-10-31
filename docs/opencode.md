@@ -27,11 +27,11 @@ That adds the package to `~/.config/opencode/opencode.json`:
 }
 ```
 
-Run `opencode`; the line appears in the footer. Pin a version with `@statusline/opencode-plugin@1.1.2`. `scripts/install-opencode.sh` does the same.
+Run `opencode`; the line appears in the footer. Pin a version with `@statusline/opencode-plugin@<version>`. `scripts/install-opencode.sh` does the same.
 
 ## Placement and sections
 
-OpenCode already shows context use, cost and `ctrl+p commands` on the right of its footer, so by default the plugin renders only `model,tokens,resets` there and leaves a two-column gap. Options go in the plugin entry, in **`~/.config/opencode/cli.json`** (the TUI's own config; the plugin's TUI half reads its options from there, not from `opencode.json`):
+OpenCode already shows context use, cost and `ctrl+p commands` on the right of its footer, so by default the plugin renders only `model,tokens,resets` there and leaves a two-column gap. Options go in the plugin entry in **`~/.config/opencode/cli.json`**, not `opencode.json`:
 
 ```jsonc
 {
@@ -51,7 +51,7 @@ OpenCode already shows context use, cost and `ctrl+p commands` on the right of i
 | `append` | Adds to the footer status slot | `model,tokens,resets` |
 | `composer-top` | Its own full-width row above the prompt | `model,context,cost,tokens,resets` |
 
-> **Checked on OpenCode 2.2.5.** Options written in `opencode.json` never reach the plugin (it receives `{}` and falls back to the footer defaults), and the tuple form `["@statusline/opencode-plugin", {…}]` in `plugins` did not load it at all; in `cli.json` the options arrive. `placement: "composer-top"` drew nothing in 1.1.2 because the line's box used `flex-grow` with a zero basis, which in the column-shaped composer slot collapses its height to zero; releases after 1.1.2 fix that (`replace` and `composer-top` verified, `append` untested).
+> **Good to know (checked on OpenCode 2.2.5).** Options written in `opencode.json` are ignored; put them in `cli.json`. `placement: "composer-top"` draws nothing in 1.1.2 and needs a release newer than 1.1.2 (the next release). `replace` and `composer-top` were checked; `append` was not.
 
 ![The line on its own row above the prompt with placement composer-top, in OpenCode 2.2.5](images/live-opencode-composer-top.svg)
 
@@ -82,7 +82,7 @@ Update: run `opencode plugin add @statusline/opencode-plugin` again, or pin a ve
 | Symptom | Fix |
 |---|---|
 | No line | Use TUI mode (`opencode`), not `opencode acp`; check the plugin is in `opencode.json`. |
-| Line touches or repeats OpenCode's own footer | Use 1.1.2 or newer, or set `"placement": "composer-top"`. |
+| Line touches or repeats OpenCode's own footer | Use 1.1.2 or newer. `"placement": "composer-top"` (own row) needs a release newer than 1.1.2; on 1.1.2 it draws nothing. |
 | `context.data.listen is undefined` | The TUI entry was loaded as the server part; keep the package's `./tui` export intact. |
 | No reset windows | Only `zai` / `zai-cn` are supported. |
 

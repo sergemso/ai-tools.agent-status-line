@@ -6,6 +6,10 @@ A rich, single-line status bar for **Claude Code**, **Cursor**, and **OpenCode**
 Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m | 12% 4h59m/5h | 55% 6d23h/7d
 ```
 
+- **Claude Code:** `/plugin marketplace add sergemso/ai-tools.agent-status-line`, then `/plugin install statusline@claude-code-status-line`, then `/statusline:setup`
+- **Cursor:** `npx @statusline/claude-plugin install`, then paste the printed `statusLine` snippet into `~/.cursor/cli-config.json` (Cursor Agent CLI; [desktop app](docs/cursor.md#install))
+- **OpenCode:** `opencode plugin add @statusline/opencode-plugin`
+
 ![The same Claude Code session at 130, 100, 70 and 45 columns](docs/images/claude-code-widths.svg)
 
 *The same session as the terminal narrows. These images are real output of the built binary, not screenshots of the agents.*
@@ -13,8 +17,6 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25
 **Jump to your agent:** [Claude Code](#claude-code--plugin-marketplace-recommended) ([guide](docs/claude-code.md)) · [Cursor](#cursor) ([guide](docs/cursor.md)) · [OpenCode](#opencode-tui) ([guide](docs/opencode.md))
 
 [Quickstart](#quickstart) · [In 30 seconds](#in-30-seconds) · [Reading the line](#reading-the-line) · [Agents](#agents) · [Updating and uninstalling](#updating-and-uninstalling) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting) · [Architecture](#architecture) · [Contributing](#contributing)
-
-**Names, because there are three:** the GitHub repo is `ai-tools.agent-status-line` and the Claude Code marketplace is `claude-code-status-line`; the npm packages are `@statusline/claude-plugin` (the CLI and Claude Code/Cursor binary), `@statusline/core` (the library) and `@statusline/opencode-plugin`; the Claude Code plugin itself is called `statusline`.
 
 ---
 
@@ -28,6 +30,8 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25
 | **Cursor** | [`npx @statusline/claude-plugin install`](#cursor) | [from a clone](docs/cursor.md#install) |
 | **OpenCode** (TUI) | `opencode plugin add @statusline/opencode-plugin` ([details](#opencode-tui)) | [one-shot script](#opencode-tui) |
 
+**Names, because there are three:** the GitHub repo is `ai-tools.agent-status-line` and the Claude Code marketplace is `claude-code-status-line`; the npm packages are `@statusline/claude-plugin` (the CLI and Claude Code/Cursor binary), `@statusline/core` (the library) and `@statusline/opencode-plugin`; the Claude Code plugin itself is called `statusline`.
+
 Full guides with screenshots, options and troubleshooting: **[Claude Code](docs/claude-code.md) · [Cursor](docs/cursor.md) · [OpenCode](docs/opencode.md)**.
 
 ### Claude Code — plugin marketplace (recommended)
@@ -38,7 +42,7 @@ Full guides with screenshots, options and troubleshooting: **[Claude Code](docs/
 /statusline:setup
 ```
 
-`/statusline:setup` builds the binary, copies it to `~/.claude/statusline/statusline` and writes the `statusLine` entry into `~/.claude/settings.json` (it refuses to overwrite a different status line unless you add `--force`). It then offers to walk you through customising. (`/statusline:uninstall` undoes it.) A SessionStart hook (`scripts/bootstrap.sh`) rebuilds the binary when the plugin updates. **Restart Claude Code** after the first install.
+`/statusline:setup` copies the prebuilt binary to `~/.claude/statusline/statusline` and writes the `statusLine` entry into `~/.claude/settings.json` (it refuses to overwrite a different status line unless you add `--force`). It then offers to walk you through customising. (`/statusline:uninstall` undoes it.) A SessionStart hook (`scripts/bootstrap.sh`) re-copies the binary when the plugin updates. **Restart Claude Code** after the first install.
 
 ### Claude Code — npm (pinned, no auto-update)
 
@@ -80,7 +84,7 @@ New to the symbols? Read [In 30 seconds](#in-30-seconds) next.
 npx @statusline/claude-plugin install
 ```
 
-Copies the prebuilt binary to `~/.claude/statusline/` (no git, no build) and prints the JSON snippet to add. For the Cursor Agent CLI that is `~/.cursor/cli-config.json` (verified); for the desktop app it is Cursor's `settings.json` (`~/.config/Cursor/User/settings.json` on Linux, `~/Library/Application Support/Cursor/User/settings.json` on macOS, `%APPDATA%\Cursor\User\settings.json` on Windows; not verified). Restart Cursor after. Cursor has no public plugin registry for status lines, so there is no marketplace route. (`curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash` does the same and also prints the settings locations.)
+This only copies the prebuilt binary to `~/.claude/statusline/` (no git, no build) and prints a `statusLine` JSON snippet; **you still paste the snippet yourself**. For the Cursor Agent CLI, paste it into `~/.cursor/cli-config.json` (verified). For the desktop app the file is probably Cursor's `settings.json`, but that is unverified: see [Where the entry goes](docs/cursor.md#install). Restart Cursor after. Cursor has no public plugin registry for status lines, so there is no marketplace route. (`curl -fsSL https://raw.githubusercontent.com/sergemso/ai-tools.agent-status-line/main/scripts/install-cursor.sh | bash` does the same and also prints the settings locations.)
 
 ### OpenCode (TUI)
 
@@ -92,7 +96,7 @@ That adds the package to `~/.config/opencode/opencode.json`; run `opencode` and 
 
 #### OpenCode options
 
-OpenCode shows its own context, cost and `ctrl+p commands` on the right of the footer, so by default the line renders only `model,tokens,resets` there and leaves a two-column gap. To change that, register the plugin with options in `~/.config/opencode/cli.json` (the TUI's config; options in `opencode.json` are not passed to the TUI part):
+Options go in `~/.config/opencode/cli.json`, not `opencode.json` (options in `opencode.json` are ignored). OpenCode shows its own context, cost and `ctrl+p commands` on the right of the footer, so by default the line renders only `model,tokens,resets` there and leaves a two-column gap. To change that, register the plugin in `cli.json` with options:
 
 ```jsonc
 {
@@ -106,7 +110,9 @@ OpenCode shows its own context, cost and `ctrl+p commands` on the right of the f
 }
 ```
 
-`placement`: `replace` (default; takes over the footer status slot), `append` (adds to it) or `composer-top` (its own full-width row above the prompt). `sections` is a comma-separated list of `model`, `context`, `cost`, `tokens`, `resets`, `worktree`, … Full reference: [`packages/opencode-plugin/README.md`](packages/opencode-plugin/README.md).
+`placement`: `replace` (default; takes over the footer status slot), `append` (adds to it) or `composer-top` (its own full-width row above the prompt; needs a release newer than 1.1.2, the next release). `sections` is a comma-separated list of `model`, `context`, `cost`, `tokens`, `resets`, `worktree`, … Full reference: [`packages/opencode-plugin/README.md`](packages/opencode-plugin/README.md).
+
+Rate-limit reset windows are only supported for the `zai` and `zai-cn` providers; other providers show none (see [Quota windows](docs/opencode.md#quota-windows)).
 
 ---
 
@@ -388,7 +394,7 @@ Any setting can be overridden via `STATUSLINE_<KEY>` (e.g. `STATUSLINE_RESETS`, 
 | A setting seems ignored | An env var `STATUSLINE_<KEY>` beats the saved value. `statusline config show` lists each value and its source. |
 | `⏱ cold` never turns into a countdown | The prompt cache has expired or hasn't been written yet; it recovers after the next request. |
 | OpenCode plugin doesn't load | It only works in **TUI mode** (`opencode`), not ACP mode (`opencode acp`). See [`packages/opencode-plugin/README.md`](packages/opencode-plugin/README.md). |
-| OpenCode line touches or repeats OpenCode's own footer | Use 1.1.2 or newer of `@statusline/opencode-plugin`, or give the line its own row with `"placement": "composer-top"` — see [OpenCode options](#opencode-options). |
+| OpenCode line touches or repeats OpenCode's own footer | Use 1.1.2 or newer of `@statusline/opencode-plugin`. To give the line its own row, `"placement": "composer-top"` needs a release newer than 1.1.2 (the next release); on 1.1.2 it draws nothing. See [OpenCode options](#opencode-options). |
 
 ---
 
@@ -425,7 +431,7 @@ packages/
   core/                  @statusline/core — sections, layout engine, renderers
   opencode-plugin/       @statusline/opencode-plugin — OpenCode TUI plugin
 commands/                Claude Code slash commands (/statusline:setup, /statusline:config)
-hooks/                   Claude Code SessionStart hook (builds the binary)
+hooks/                   Claude Code SessionStart hook (keeps the copied binary current)
 .claude-plugin/          plugin.json + marketplace.json for the Claude Code marketplace
 scripts/                 one-shot installers (Claude Code, Cursor, OpenCode)
 docs/                    adapters, configuration, multi-agent, releasing
