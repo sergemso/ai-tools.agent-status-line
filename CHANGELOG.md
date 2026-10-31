@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.3](https://github.com/sergemso/ai-tools.agent-status-line/compare/claude-code-v1.1.2...claude-code-v1.1.3) (2026-10-31)
+
+
+### Bug Fixes
+
+* publish the CLI as @statusline/claude-plugin ([22ac0db](https://github.com/sergemso/ai-tools.agent-status-line/commit/22ac0db15508311c04ee6a8749825c29886e399b))
+* publish the CLI as @statusline/claude-plugin ([12613c8](https://github.com/sergemso/ai-tools.agent-status-line/commit/12613c89632dc0983e84f7a827d94f66a08e289f))
+
 ## [1.1.2](https://github.com/sergemso/ai-tools.agent-status-line/compare/claude-code-v1.1.1...claude-code-v1.1.2) (2026-10-31)
 
 
