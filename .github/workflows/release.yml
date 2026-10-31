@@ -1,99 +1,89 @@
 name: Release
 
-# Manual release trigger: create a tag locally and push it,
-# or use the GitHub Actions "Run workflow" button.
+# Per-package releases driven by Conventional Commits (release-please).
 #
-# Usage:
-#   1. Bump version in all three package.json files (root, packages/core,
-#      packages/opencode-plugin) and in .claude-plugin/plugin.json — they
-#      must match (Claude Code only offers a plugin update when plugin.json's
-#      version changes).
-#   2. Commit: "chore(release): vX.Y.Z"
-#   3. Tag and push:
-#        git tag vX.Y.Z
-#        git push origin vX.Y.Z
-#   4. The CI workflow's release job publishes all packages to npm and
-#      creates a GitHub Release with auto-generated notes.
+# Every push to main updates one Release PR per changed package. Merging a
+# Release PR bumps that package's version and changelog, tags it
+# (core-vX.Y.Z, opencode-plugin-vX.Y.Z, claude-code-vX.Y.Z), and the publish
+# job below ships only the packages that were released.
 #
-# Alternatively, use this workflow_dispatch to tag the latest main commit
-# with the version found in package.json.
+# Commit scope does not select a package — changed file paths do:
+#   packages/core            -> @statusline/core
+#   packages/opencode-plugin -> @statusline/opencode-plugin
+#   everything else (src/, hooks/, commands/, ...) -> claude-code-status-line
+# node-workspace also bumps dependents when core is released.
 
 on:
-  workflow_dispatch:
-    inputs:
-      prerelease:
-        description: 'Mark as pre-release (e.g. for rc/beta)'
-        required: false
-        default: false
-        type: boolean
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
-  tag:
+  release-please:
     runs-on: ubuntu-latest
+    outputs:
+      paths_released: ${{ steps.rp.outputs.paths_released }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          # PRs opened with GITHUB_TOKEN don't trigger CI. Set a PAT (or app
+          # token) as RELEASE_PLEASE_TOKEN so Release PRs get checks.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.paths_released != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # for npm provenance
+    env:
+      RELEASED: ${{ needs.release-please.outputs.paths_released }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
 
-      - name: Read version from package.json
-        id: version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+      - run: npm ci
 
-      - name: Verify all packages have the same version
+      - name: Build
         run: |
-          ROOT_VERSION=$(node -p "require('./package.json').version")
-          CORE_VERSION=$(node -p "require('./packages/core/package.json').version")
-          OPENCODE_VERSION=$(node -p "require('./packages/opencode-plugin/package.json').version")
-          PLUGIN_VERSION=$(node -p "require('./.claude-plugin/plugin.json').version")
-          echo "Root:      $ROOT_VERSION"
-          echo "Core:      $CORE_VERSION"
-          echo "OpenCode:  $OPENCODE_VERSION"
-          echo "Claude plugin: $PLUGIN_VERSION"
-          if [ "$ROOT_VERSION" != "$CORE_VERSION" ] || [ "$ROOT_VERSION" != "$OPENCODE_VERSION" ] || [ "$ROOT_VERSION" != "$PLUGIN_VERSION" ]; then
-            echo "ERROR: package versions are out of sync"
-            exit 1
-          fi
+          npm run build:core
+          npm run build
+          npm run build:opencode
 
-      - name: Check tag doesn't already exist
-        run: |
-          TAG="v${{ steps.version.outputs.version }}"
-          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "ERROR: tag $TAG already exists"
-            exit 1
-          fi
-          echo "Tag $TAG is available"
+      - name: Test
+        run: npm test
 
-      - name: Create and push tag
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          TAG="v${{ steps.version.outputs.version }}"
-          git tag -a "$TAG" -m "Release $TAG"
-          git push origin "$TAG"
-          echo "Pushed $TAG — CI release job will publish to npm"
+      # Order matters: the other two packages depend on core.
+      - name: Publish @statusline/core
+        if: contains(fromJSON(env.RELEASED), 'packages/core')
+        run: npm publish --workspace=@statusline/core --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Summary
-        run: |
-          echo "### Release triggered" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Tag: \`v${{ steps.version.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "The CI workflow will now:" >> "$GITHUB_STEP_SUMMARY"
-          echo "1. Build all packages" >> "$GITHUB_STEP_SUMMARY"
-          echo "2. Publish \`@statusline/core\` to npm" >> "$GITHUB_STEP_SUMMARY"
-          echo "3. Publish \`@statusline/opencode-plugin\` to npm" >> "$GITHUB_STEP_SUMMARY"
-          echo "4. Publish \`claude-code-status-line\` (root CLI) to npm" >> "$GITHUB_STEP_SUMMARY"
-          echo "5. Create a GitHub Release with auto-generated notes" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Track progress: [Actions](${{ github.server_url }}/${{ github.repository }}/actions)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish @statusline/opencode-plugin
+        if: contains(fromJSON(env.RELEASED), 'packages/opencode-plugin')
+        run: npm publish --workspace=@statusline/opencode-plugin --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish claude-code-status-line
+        if: contains(fromJSON(env.RELEASED), '.')
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
