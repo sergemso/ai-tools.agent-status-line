@@ -10,7 +10,7 @@ name: Release
 # Commit scope does not select a package — changed file paths do:
 #   packages/core            -> @statusline/core
 #   packages/opencode-plugin -> @statusline/opencode-plugin
-#   everything else (src/, hooks/, commands/, ...) -> claude-code-status-line
+#   everything else (src/, hooks/, commands/, ...) -> @statusline/claude-plugin
 # node-workspace also bumps dependents when core is released.
 
 on:
@@ -82,7 +82,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish claude-code-status-line
+      - name: Publish @statusline/claude-plugin
         if: contains(fromJSON(env.RELEASED), '.')
         run: npm publish --provenance --access public
         env:

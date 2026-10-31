@@ -9,7 +9,7 @@
     ".": {
       "release-type": "node",
       "component": "claude-code",
-      "package-name": "claude-code-status-line",
+      "package-name": "@statusline/claude-plugin",
       "extra-files": [
         { "type": "json", "path": ".claude-plugin/plugin.json", "jsonpath": "$.version" }
       ]
