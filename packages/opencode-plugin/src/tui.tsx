@@ -180,9 +180,7 @@ export default Plugin.define({
           {(spans: () => Span[]) => (
             <box
               flexDirection="row"
-              flexBasis={0}
-              flexGrow={1}
-              flexShrink={1}
+              {...boxSize}
               minWidth={0}
               onSizeChange={function (this: { width: number }) {
                 const width = this.width;
@@ -209,6 +207,13 @@ export default Plugin.define({
         </Show>
       );
     };
+
+    // In the footer the slot is a row, so grow to take the width left over.
+    // The composer-top slot is a column: the same flex-grow collapses the
+    // height to zero and the row vanishes, so take the full width at one line.
+    const boxSize = options.shared
+      ? { flexBasis: 0, flexGrow: 1, flexShrink: 1 }
+      : { width: "100%" as const, height: 1 };
 
     const render = (input: { sessionID?: string }) => (
       <StatusLine sessionID={input.sessionID} />

@@ -51,7 +51,9 @@ OpenCode already shows context use, cost and `ctrl+p commands` on the right of i
 | `append` | Adds to the footer status slot | `model,tokens,resets` |
 | `composer-top` | Its own full-width row above the prompt | `model,context,cost,tokens,resets` |
 
-> **Checked on OpenCode 2.2.5.** Options written in `opencode.json` never reach the plugin (it receives `{}` and falls back to the footer defaults), and the tuple form `["@statusline/opencode-plugin", {…}]` in `plugins` did not load it at all. In `cli.json` the options do arrive. `placement: "composer-top"` is **not working** there yet: with the options delivered, the row above the prompt stayed empty (tried with `model,tokens` and with all sections), even though the host has a `session.composer.top` slot. `replace` (the default) is verified; `append` is untested.
+> **Checked on OpenCode 2.2.5.** Options written in `opencode.json` never reach the plugin (it receives `{}` and falls back to the footer defaults), and the tuple form `["@statusline/opencode-plugin", {…}]` in `plugins` did not load it at all; in `cli.json` the options arrive. `placement: "composer-top"` drew nothing in 1.1.2 because the line's box used `flex-grow` with a zero basis, which in the column-shaped composer slot collapses its height to zero; releases after 1.1.2 fix that (`replace` and `composer-top` verified, `append` untested).
+
+![The line on its own row above the prompt with placement composer-top, in OpenCode 2.2.5](images/live-opencode-composer-top.svg)
 
 `sections` overrides the defaults in any placement. Names: `model`, `context`, `cost`, `tokens`, `overhead`, `cache`, `stats`, `resets`, `vim`, `worktree`. The git branch (`worktree`) is never on by default. An unrecognised `placement` falls back to `replace`.
 

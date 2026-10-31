@@ -92,10 +92,11 @@ That adds the package to `~/.config/opencode/opencode.json`; run `opencode` and 
 
 #### OpenCode options
 
-OpenCode shows its own context, cost and `ctrl+p commands` on the right of the footer, so by default the line renders only `model,tokens,resets` there and leaves a two-column gap. To change that, register the plugin with options:
+OpenCode shows its own context, cost and `ctrl+p commands` on the right of the footer, so by default the line renders only `model,tokens,resets` there and leaves a two-column gap. To change that, register the plugin with options in `~/.config/opencode/cli.json` (the TUI's config; options in `opencode.json` are not passed to the TUI part):
 
 ```jsonc
 {
+  "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
       "package": "@statusline/opencode-plugin",
