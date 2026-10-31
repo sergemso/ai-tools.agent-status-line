@@ -6,6 +6,10 @@ OpenCode (v2, TUI mode) has no external status-line command. Instead it loads in
 
 *Real output of the plugin's renderer. The grey text after the first two lines is OpenCode's own footer, drawn illustratively; this is not a screenshot of OpenCode.*
 
+![The plugin's footer line in a real OpenCode 2.2.5 session](images/live-opencode.svg)
+
+*Captured from OpenCode 2.2.5 (`--standalone`, tmux pane, free Big Pickle model, after one message), then rendered to SVG with `scripts/render-live-capture.mjs`. `Big Pickle | 7.2k` is the plugin; `6.8K (3%)` and `ctrl+p commands` are OpenCode's own footer.*
+
 **TUI mode only.** In ACP mode (`opencode acp`) the editor draws its own UI and there is no footer to claim.
 
 ## Install
@@ -45,6 +49,8 @@ OpenCode already shows context use, cost and `ctrl+p commands` on the right of i
 | `replace` (default) | Takes over the footer status slot | `model,tokens,resets` |
 | `append` | Adds to the footer status slot | `model,tokens,resets` |
 | `composer-top` | Its own full-width row above the prompt | `model,context,cost,tokens,resets` |
+
+> **Options not verified.** On OpenCode 2.2.5 I confirmed the default install (`opencode plugin add`, string entry in `opencode.json`). I could not make the options above take effect: the object form with `placement: "composer-top"` left the footer unchanged, and a `["@statusline/opencode-plugin", {…}]` tuple removed the plugin's line altogether. Treat the `placement` and `sections` options as unconfirmed until this is checked.
 
 `sections` overrides the defaults in any placement. Names: `model`, `context`, `cost`, `tokens`, `overhead`, `cache`, `stats`, `resets`, `vim`, `worktree`. The git branch (`worktree`) is never on by default. An unrecognised `placement` falls back to `replace`.
 

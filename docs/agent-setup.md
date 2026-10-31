@@ -10,4 +10,4 @@ One guide per agent:
 
 Settings, environment variables and the wizard are shared: see the [README](../README.md#configuration). To support another agent, see [adding-adapters.md](adding-adapters.md).
 
-The images in these guides are generated from real output by `npm run docs:images` (after building); they are not screenshots of the agents' UIs. The `live-*` images are the exception: they are tmux captures of the real Claude Code and Cursor CLIs, rendered by `scripts/render-live-capture.mjs` from `docs/captures/`.
+The images in these guides are generated from real output by `npm run docs:images` (after building); they are not screenshots of the agents' UIs. The `live-*` images are the exception: they are tmux captures of the real Claude Code, Cursor and OpenCode CLIs, rendered by `scripts/render-live-capture.mjs` from `docs/captures/`.
