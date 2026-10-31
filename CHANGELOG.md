@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.4](https://github.com/sergemso/ai-tools.agent-status-line/compare/claude-code-v1.1.3...claude-code-v1.1.4) (2026-10-31)
+
+
+### Bug Fixes
+
+* make @statusline/claude-plugin installable from npm ([60781b3](https://github.com/sergemso/ai-tools.agent-status-line/commit/60781b3dcac6d0eab613f0fbc947a1e2fa983a91))
+* make @statusline/claude-plugin installable from npm ([81719ac](https://github.com/sergemso/ai-tools.agent-status-line/commit/81719ac8d892757b0383bc533b0e50cc30544be2))
+
 ## [1.1.3](https://github.com/sergemso/ai-tools.agent-status-line/compare/claude-code-v1.1.2...claude-code-v1.1.3) (2026-10-31)
 
 
