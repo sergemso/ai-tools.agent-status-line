@@ -6,6 +6,10 @@ A rich, single-line status bar for **Claude Code**, **Cursor**, and **OpenCode**
 Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m | 12% 4h59m/5h | 55% 6d23h/7d
 ```
 
+![The same Claude Code session at 130, 100, 70 and 45 columns](docs/images/claude-code-widths.svg)
+
+*The same session as the terminal narrows. These images are real output of the built binary, not screenshots of the agents.*
+
 [Quickstart](#quickstart) · [In 30 seconds](#in-30-seconds) · [Reading the line](#reading-the-line) · [Agents](#agents) · [Updating and uninstalling](#updating) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting) · [Architecture](#architecture) · [Contributing](#contributing)
 
 **Names, because there are three:** the GitHub repo and the Claude Code marketplace are `claude-code-status-line`; the npm packages are `@statusline/claude-plugin` (the CLI and Claude Code/Cursor binary), `@statusline/core` (the library) and `@statusline/opencode-plugin`; the Claude Code plugin itself is called `statusline`.
@@ -21,6 +25,8 @@ Sonnet 5.5 hi | ▕▄▏ 42%/200k | Σ $5.6 ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25
 | **Claude Code** | [Plugin marketplace](#claude-code--plugin-marketplace-recommended): auto-updates, slash commands | [npm](#claude-code--npm-pinned-no-auto-update) · [one-shot script](#claude-code--one-shot-script) · [manual](#manual-setup) |
 | **Cursor** | [One-shot script](#cursor) | [manual](#manual-setup) |
 | **OpenCode** (TUI) | `opencode plugin add @statusline/opencode-plugin` ([details](#opencode-tui)) | [one-shot script](#opencode-tui) |
+
+Full guides with screenshots, options and troubleshooting: **[Claude Code](docs/claude-code.md) · [Cursor](docs/cursor.md) · [OpenCode](docs/opencode.md)**.
 
 ### Claude Code — plugin marketplace (recommended)
 
@@ -123,6 +129,8 @@ Example, 180k tokens of context, warm cache, Sonnet pricing:
 ```text
 Sonnet 5.5 med | ▕▁▏ 18%/1M | Σ 31¢ ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m
 ```
+
+![Six states of the Claude Code status line](docs/images/claude-code-states.svg)
 
 ### Text styles: words, short, glyph
 
@@ -266,9 +274,9 @@ The binary auto-detects which coding agent is feeding it data and adapts the out
 
 | Agent | Status | How it works | Install |
 |---|---|---|---|
-| **Claude Code** | ✅ Built-in | External command: Claude Code pipes JSON to stdin, the binary returns an ANSI string. Configured via `settings.json` `statusLine.command`. | [Quickstart](#claude-code--plugin-marketplace-recommended) |
-| **Cursor** | ✅ Built-in | Same external-command contract, with Cursor-specific fields (`render_width_chars`, `autorun`, `max_mode`, `param_summary`). | [One-shot script](#cursor), then add the JSON snippet to Cursor's settings |
-| **OpenCode** | ✅ Plugin (`@statusline/opencode-plugin`) | OpenCode v2 has no external-command contract; it loads in-process TUI plugins that claim a footer slot. TUI mode only — not ACP. | `opencode plugin add @statusline/opencode-plugin` |
+| **Claude Code** | ✅ Built-in | External command: Claude Code pipes JSON to stdin, the binary returns an ANSI string. Configured via `settings.json` `statusLine.command`. | [Quickstart](#claude-code--plugin-marketplace-recommended) · [guide](docs/claude-code.md) |
+| **Cursor** | ✅ Built-in | Same external-command contract, with Cursor-specific fields (`render_width_chars`, `autorun`, `max_mode`, `param_summary`). | [One-shot script](#cursor), then add the JSON snippet to Cursor's settings · [guide](docs/cursor.md) |
+| **OpenCode** | ✅ Plugin (`@statusline/opencode-plugin`) | OpenCode v2 has no external-command contract; it loads in-process TUI plugins that claim a footer slot. TUI mode only — not ACP. | `opencode plugin add @statusline/opencode-plugin` · [guide](docs/opencode.md) |
 
 **Add a new agent:** implement the `StatusLineAdapter` interface (see [`docs/adding-adapters.md`](docs/adding-adapters.md)). Detection is automatic via `canHandle()`.
 
@@ -516,6 +524,8 @@ npm test
 | Build core only | `npm run build:core` |
 | Build everything | `npm run build` |
 | Lint | `npm run lint` |
+| Smoke-test the packed tarballs (as CI does) | `npm run smoke:pack` |
+| Regenerate the doc images (after building) | `npm run docs:images` |
 | Add a test fixture | drop a JSON file in `test/fixtures/<agent>/`, add it to the loop in `test/adapters/adapter.test.ts` |
 
 ### Adding a new agent adapter

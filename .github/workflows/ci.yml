@@ -40,6 +40,11 @@ jobs:
       - name: Type-check (no emit)
         run: npx tsc --noEmit
 
+      # Installs the packed tarballs into an empty directory, as a registry
+      # install would. Catches files missing from the published packages.
+      - name: Smoke-test packed tarballs
+        run: npm run smoke:pack
+
   lint:
     runs-on: ubuntu-latest
     steps:
