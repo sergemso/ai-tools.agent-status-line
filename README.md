@@ -126,43 +126,9 @@ These are estimates (they ignore your prompt and the output, and assume a typica
 
 ## Reading the line
 
-Example, 180k tokens of context, warm cache, Sonnet pricing:
-
-```text
-Sonnet 5.5 med | ▕▁▏ 18%/1M | Σ 31¢ ⚡ 3.6¢ ⇲ 25¢ ⟲ 7 9 | ⏱ 25m
-```
+Each group below explains one part of the line. The image shows one Claude Code session at a fixed 130 columns in six states, each captioned in the image: fresh session, mid session (next-call cost and restart thresholds appear), cold cache, context nearly full, rate limit close, and a pricier model. It uses the words and short forms; the tables below show the glyph form, which is what you get on a narrower window (see [Text styles](#text-styles-words-short-glyph)).
 
 ![Six states of the Claude Code status line](docs/images/claude-code-states.svg)
-
-### Text styles: words, short, glyph
-
-Every efficiency and cache item has three text forms. By default (`auto`) the line uses the most readable form in which everything fits your terminal width, and falls back towards glyphs as the window narrows; items start to drop only after the glyph form no longer fits.
-
-| Item | words | short | glyph |
-|---|---|---|---|
-| Session cost | `session 31¢` | `31¢ total` | `Σ 31¢` |
-| Next request | `next call 3.6¢` | `next 3.6¢` | `⚡ 3.6¢` |
-| Compaction | `compact cost 25¢` | `compact 25¢` | `⇲ 25¢` |
-| Restart thresholds | `restart: maybe at 7, yes at 9 calls` | `restart 7–9` | `⟲ 7 9` |
-| Cache | `cache 25m` / `cache cold` | `cache 25m` / `cache cold` | `⏱ 25m` / `⏱ cold` |
-
-A fourth style, **`ascii`**, uses plain ASCII only (`31c tot`, `nx 3.6c`, `cmp 27c`, `rst 7 10`, `[##--]` for the bar) for fonts or consoles that cannot show the symbols. `auto` never picks it by width; it is chosen automatically only when the environment cannot show Unicode (non-UTF-8 locale, or `TERM=linux`/`dumb`), and the wizard offers it when you say some symbols look broken. A symbol missing from a font cannot be detected by a program, which is why the wizard asks.
-
-The words form needs roughly 120 columns, short about 100, glyph about 70. Force a style at any width:
-
-```bash
-statusline config format glyph                  # always compact, at any width
-statusline config format words                  # always readable
-statusline config format ascii                  # plain ASCII only
-statusline config format auto                   # back to width-based (default)
-statusline config format overhead glyph         # one section: cost, overhead, cache
-statusline config format cost.session words     # one item (see `statusline config format` for the keys)
-statusline config format cost.session default   # remove an override
-```
-
-Environment variables work too: `STATUSLINE_FORMAT=glyph`, `STATUSLINE_FORMATS=overhead=glyph,cost.session=words`. Precedence: item override, then section override, then the global format, then the width-based choice. A forced style never changes with width, so a forced `words` item can push other items off a narrow line. Without a detected terminal width, the line uses glyphs.
-
-The examples in this README use the glyph form.
 
 ### Model group
 
@@ -190,7 +156,7 @@ Optional `~/.claude/model-multipliers.json` (not created for you; it is separate
 
 | Indicator | Meaning |
 |---|---|
-| `▕▁▏ 18%/1M` | Context window use: bar, percent used, window size. 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80%. |
+| `▕▂▏ 18%/1M` | Context window use: bar, percent used, window size. 🟩 < 50% · 🟨 ≥ 50% · 🟥 ≥ 80%. |
 
 ### Session efficiency group
 
@@ -259,6 +225,36 @@ Rate-limit windows rank by use: 70 at 80% or more, 30 at 50% or more, 10 below. 
 Width is detected from the terminal (`stty`), so the line refits on the next refresh after a resize. Claude Code does not re-run the status line on resize, so set `refreshInterval` in `~/.claude/settings.json` (this repo's installer uses 15 s; 3 s feels immediate).
 
 ---
+
+### Text styles: words, short, glyph
+
+Every efficiency and cache item has three text forms. By default (`auto`) the line uses the most readable form in which everything fits your terminal width, and falls back towards glyphs as the window narrows; items start to drop only after the glyph form no longer fits.
+
+| Item | words | short | glyph |
+|---|---|---|---|
+| Session cost | `session 31¢` | `31¢ total` | `Σ 31¢` |
+| Next request | `next call 3.6¢` | `next 3.6¢` | `⚡ 3.6¢` |
+| Compaction | `compact cost 25¢` | `compact 25¢` | `⇲ 25¢` |
+| Restart thresholds | `restart: maybe at 7, yes at 9 calls` | `restart 7–9` | `⟲ 7 9` |
+| Cache | `cache 25m` / `cache cold` | `cache 25m` / `cache cold` | `⏱ 25m` / `⏱ cold` |
+
+A fourth style, **`ascii`**, uses plain ASCII only (`31c tot`, `nx 3.6c`, `cmp 27c`, `rst 7 10`, `[##--]` for the bar) for fonts or consoles that cannot show the symbols. `auto` never picks it by width; it is chosen automatically only when the environment cannot show Unicode (non-UTF-8 locale, or `TERM=linux`/`dumb`), and the wizard offers it when you say some symbols look broken. A symbol missing from a font cannot be detected by a program, which is why the wizard asks.
+
+The words form needs roughly 120 columns, short about 100, glyph about 70. Force a style at any width:
+
+```bash
+statusline config format glyph                  # always compact, at any width
+statusline config format words                  # always readable
+statusline config format ascii                  # plain ASCII only
+statusline config format auto                   # back to width-based (default)
+statusline config format overhead glyph         # one section: cost, overhead, cache
+statusline config format cost.session words     # one item (see `statusline config format` for the keys)
+statusline config format cost.session default   # remove an override
+```
+
+Environment variables work too: `STATUSLINE_FORMAT=glyph`, `STATUSLINE_FORMATS=overhead=glyph,cost.session=words`. Precedence: item override, then section override, then the global format, then the width-based choice. A forced style never changes with width, so a forced `words` item can push other items off a narrow line. Without a detected terminal width, the line uses glyphs.
+
+The examples in this README use the glyph form.
 
 ### Behaviour
 
