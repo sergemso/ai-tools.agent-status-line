@@ -54,7 +54,8 @@
   },
   "files": [
     "bin/",
-    "dist/"
+    "dist/",
+    "scripts/postinstall.mjs"
   ],
   "workspaces": [
     "packages/*"
