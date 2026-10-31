@@ -27,7 +27,7 @@ That adds the package to `~/.config/opencode/opencode.json`:
 }
 ```
 
-Run `opencode`; the line appears in the footer. Pin a version with `@statusline/opencode-plugin@1.1.2`. `scripts/install-opencode.sh` does the same, with a build-from-source fallback.
+Run `opencode`; the line appears in the footer. Pin a version with `@statusline/opencode-plugin@1.1.2`. `scripts/install-opencode.sh` does the same.
 
 ## Placement and sections
 

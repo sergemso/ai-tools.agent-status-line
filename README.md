@@ -88,7 +88,7 @@ Copies the prebuilt binary to `~/.claude/statusline/` (no git, no build) and pri
 opencode plugin add @statusline/opencode-plugin
 ```
 
-That adds the package to `~/.config/opencode/opencode.json`; run `opencode` and the line appears in the footer. The one-shot script (`scripts/install-opencode.sh`) does the same, and falls back to building from source if the package cannot be fetched. **TUI mode only**: `opencode acp` has no footer to draw into.
+That adds the package to `~/.config/opencode/opencode.json`; run `opencode` and the line appears in the footer. The one-shot script (`scripts/install-opencode.sh`) does the same. **TUI mode only**: `opencode acp` has no footer to draw into.
 
 #### OpenCode options
 
