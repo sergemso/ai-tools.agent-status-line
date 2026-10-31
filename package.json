@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:pack": "bash scripts/smoke-pack.sh",
+    "docs:images": "node scripts/render-screenshots.mjs",
     "lint": "eslint src --ext .ts",
     "prepublishOnly": "npm run build"
   },

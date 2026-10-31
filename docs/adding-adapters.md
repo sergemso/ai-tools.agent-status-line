@@ -233,7 +233,7 @@ npm run checkpoint:phase3
 ## Step 8: Update Documentation
 
 - Add agent to `docs/multi-agent.md`
-- Add setup instructions to `docs/agent-setup.md`
+- Add a guide `docs/<agent>.md` and link it from `docs/agent-setup.md`
 - Add configuration options to `docs/configuration.md`
 
 ## Best Practices
