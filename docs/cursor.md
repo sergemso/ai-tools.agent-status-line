@@ -6,6 +6,10 @@ Cursor uses the same external-command contract as Claude Code: it pipes a JSON p
 
 *Real output of the built binary for Cursor payloads, not a screenshot of Cursor.*
 
+![The status line under the prompt in a real Cursor Agent CLI session](images/live-cursor.svg)
+
+*Captured from the Cursor Agent CLI 2026.10.22 (tmux pane, Auto model, after one message), then rendered to SVG with `scripts/render-live-capture.mjs`. The separator is the `•` from the author's saved settings.*
+
 ## What you see
 
 Cursor's payload carries the model, the context window and token totals, but not session cost, prompt-cache timing or rate limits. So the line is shorter than in Claude Code:

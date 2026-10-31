@@ -6,6 +6,12 @@ The status line runs as an external command: Claude Code pipes a JSON payload to
 
 *One session at four terminal widths: readable words, then shorter forms, then glyphs, then items are dropped lowest-priority first. These images are real output of the built binary (`npm run docs:images`), not screenshots of Claude Code.*
 
+![The status line in a real Claude Code session at 140 columns](images/live-claude-code.svg)
+
+![The same real session at 80 columns: the reset windows are dropped](images/live-claude-code-80.svg)
+
+*Captured from Claude Code 2.1.308 in a tmux pane (after one prompt), then rendered to SVG with `scripts/render-live-capture.mjs`. The separator is the `•` from the author's saved settings.*
+
 ## Install
 
 Pick one. Requirements: Node.js ≥ 18; only the script and clone routes also need `git`.
