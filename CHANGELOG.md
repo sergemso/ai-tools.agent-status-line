@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/sergemso/ai-tools.agent-status-line/compare/claude-code-v1.3.0...claude-code-v1.3.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **claude-code:** count sub-agent costs in the session cost ([#27](https://github.com/sergemso/ai-tools.agent-status-line/issues/27)) ([019e16a](https://github.com/sergemso/ai-tools.agent-status-line/commit/019e16a5cd77a04cbca7321b30b99bc64b4f1d62))
+
 ## [1.3.0](https://github.com/sergemso/ai-tools.agent-status-line/compare/claude-code-v1.2.0...claude-code-v1.3.0) (2026-10-31)
 
 
