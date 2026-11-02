@@ -25,7 +25,6 @@ import {
 import { detectCols } from "shared/terminal.js";
 import { loadConfig, getSetting } from "shared/config-file.js";
 import { loadPrices } from "shared/prices.js";
-import { addSubagentCost } from "shared/subagent-cost.js";
 import { getClaudeConfigDir } from "utils/config-utils.js";
 import { adapterRegistry, UnifiedStatusInput, AgentType } from "adapters/index.js";
 import { formatStatusLine, buildSectionsString } from "./formatter.js";
@@ -120,9 +119,6 @@ export async function generateStatusLine(input: string): Promise<string> {
   try {
     const rawInput = JSON.parse(input);
     unifiedInput = adapterRegistry.parse(rawInput);
-    if (unifiedInput.agent === "claude-code" && typeof rawInput.transcript_path === "string") {
-      unifiedInput = await addSubagentCost(unifiedInput, rawInput.transcript_path, await loadPrices(claudeConfigDir, settings.pricesTtl));
-    }
   } catch (error) {
     throw new Error(`Failed to parse input: ${error instanceof Error ? error.message : String(error)}`);
   }
