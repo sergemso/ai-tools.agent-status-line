@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Cursor usage by conversation",
+  "version": "1.0.0",
+  "description": "Group cursor.com dashboard usage events by conversation ID.",
+  "host_permissions": ["https://cursor.com/*"],
+  "web_accessible_resources": [
+    {
+      "resources": ["group.js"],
+      "matches": ["https://cursor.com/*"]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://cursor.com/dashboard/usage*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
