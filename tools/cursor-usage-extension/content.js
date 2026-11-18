@@ -31,8 +31,9 @@
     '<strong style="flex:1">By conversation</strong>' +
     '<select id="conv-hours" style="background:#2a2a2a;color:#e6e6e6;border:1px solid #444;border-radius:5px;padding:3px 5px">' +
     '<option value="6">6h</option>' +
-    '<option value="24" selected>24h</option>' +
-    '<option value="168">7d</option>' +
+    '<option value="24">24h</option>' +
+    '<option value="72">3d</option>' +
+    '<option value="168" selected>7d</option>' +
     "</select>" +
     '<button id="conv-refresh" style="background:#2a2a2a;color:#e6e6e6;border:1px solid #444;border-radius:5px;padding:3px 8px;cursor:pointer">Refresh</button>' +
     '<button id="conv-close" style="background:none;color:#888;border:0;cursor:pointer;font-size:15px">×</button>';
@@ -46,33 +47,47 @@
 
   const hoursEl = header.querySelector("#conv-hours");
 
-  async function load() {
-    body.textContent = "Loading…";
-    const hours = Number(hoursEl.value) || 24;
-    const end = Date.now();
-    const start = end - hours * 3600 * 1000;
-    try {
+  // Follow pages: page 1 caps at pageSize while still reporting a larger
+  // total, so a single request silently truncates busy windows.
+  async function fetchAll(start, end) {
+    const events = [];
+    let total = null;
+    for (let page = 1; page <= 10; page++) {
       const res = await fetch(ENDPOINT, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          startDate: start,
-          endDate: end,
-          page: 1,
-          pageSize: 500,
-        }),
+        body: JSON.stringify({ startDate: start, endDate: end, page, pageSize: 1000 }),
       });
-      if (res.status === 401 || res.status === 307) {
+      if (res.status === 401 || res.status === 307) return { authError: true };
+      if (!res.ok) return { error: `HTTP ${res.status}` };
+      const data = await res.json();
+      if (total === null) total = data.totalUsageEventsCount;
+      const batch = data.usageEventsDisplay || [];
+      if (!batch.length) break;
+      events.push(...batch);
+      if (total !== null && events.length >= total) break;
+      if (batch.length < 1000) break;
+    }
+    return { events };
+  }
+
+  async function load() {
+    body.textContent = "Loading…";
+    const hours = Number(hoursEl.value) || 168;
+    const end = Date.now();
+    const start = end - hours * 3600 * 1000;
+    try {
+      const { events, authError, error } = await fetchAll(start, end);
+      if (authError) {
         body.textContent = "Not signed in to cursor.com — sign in and retry.";
         return;
       }
-      if (!res.ok) {
-        body.textContent = `Request failed: HTTP ${res.status}`;
+      if (error) {
+        body.textContent = `Request failed: ${error}`;
         return;
       }
-      const data = await res.json();
-      render(groupByConversation(data.usageEventsDisplay || []));
+      render(groupByConversation(events));
     } catch (err) {
       body.textContent = "Fetch error: " + (err && err.message ? err.message : err);
     }
